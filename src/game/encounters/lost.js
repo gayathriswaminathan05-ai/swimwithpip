@@ -30,7 +30,7 @@ export class PowerCurrent extends Encounter {
     return 'current';
   }
   hint() {
-    return 'A powerful current is pushing Pip off course. Answer to reach the sheltered channel.';
+    return 'A powerful current keeps pushing Pip back. Answer to reach the sheltered channel.';
   }
   get captureText() {
     return 'The current swept Pip far, far away.';
@@ -42,11 +42,14 @@ export class PowerCurrent extends Encounter {
     this.bandAt = new THREE.Vector3(0, 0.8, 6.8);
     this.band = new CurrentBand({ length: 50, width: 3.6, height: 2.4, wiggle: 0.9, flow: 1.7 });
     this.band.group.position.copy(this.bandAt);
+    // The stream runs straight against Pip's way home: from ahead, back toward the camera (+Z).
+    this.band.group.rotation.y = -Math.PI / 2;
     this.band.target = 1;
     this.group.add(this.band.group);
-    // A few soft streamlines running along inside the stream.
+    // A few soft streamlines running along inside the stream (same direction).
     this.streaks = new CurrentStreaks(22, { length: 44, radius: [0.4, 2.4], seed: 8, opacity: 0.45, width: 0.12 });
-    this.streaks.center.copy(this.bandAt);
+    this.streaks.mesh.rotation.y = -Math.PI / 2;
+    this.streaks.center.set(this.bandAt.z, this.bandAt.y, -this.bandAt.x); // in the streak mesh's own (rotated) space
     this.streaks.flow = 13;
     this.streaks.spin = 0.18;
     this.streaks.target = 1;
@@ -73,6 +76,16 @@ export class PowerCurrent extends Encounter {
       this.group.add(k);
     }
     this.struggle = 0;
+    this.cycle = 0;
+    this.gusting = false;
+  }
+
+  /** World point and flow direction somewhere inside the stream. */
+  _streamPoint(u) {
+    this.band.sample(this._sp, this._sd, u);
+    this.band.group.localToWorld(this._sp);
+    this._sd.transformDirection(this.band.group.matrixWorld);
+    return this._sp;
   }
 
   update(dt, t) {
@@ -85,28 +98,59 @@ export class PowerCurrent extends Encounter {
     this.band.target = near || this.phase === 'idle' ? 1 : 0;
     this.streaks.target = this.band.target;
     if (near) {
-      g.currentPushTarget.set(this.phase === 'capture' ? 3.2 : 2.2, 0);
+      g.currentPushTarget.set(0, this.phase === 'capture' || this.gusting ? 3.4 : 2.2);
       this.debrisT = (this.debrisT || 0) - dt;
       while (this.debrisT <= 0) {
-        this.debrisT += 0.045;
-        const p = this.band.sample(this._sp, this._sd, Math.random() * 0.35).add(this.bandAt);
-        const dir = this._sd.multiplyScalar(1);
+        this.debrisT += this.gusting ? 0.018 : 0.045;
+        const at = this._streamPoint(Math.random() * 0.45).clone();
+        const dir = this._sd;
         const roll = Math.random();
-        const at = this.L(p.x, p.y, p.z);
         if (roll < 0.45) g.fx.dust.emit(at, { count: 1, spread: 0.6, speed: 10, dir, life: 2.4, size: 0.5, grow: 0.4, drag: 0.05, color: 0xd7c49a, alpha: 0.4 });
         else if (roll < 0.7) g.fx.dust.emit(at, { count: 1, spread: 0.4, speed: 9, dir, life: 2.6, size: 0.35, grow: 0.1, drag: 0.05, color: 0x4fa65e, alpha: 0.75 });
         else g.fx.bubbles.emit(at, { count: 1, spread: 0.4, speed: 11, dir, up: 0.3, life: 2.4, size: 0.16, drag: 0.05, color: 0xe8fbff });
       }
     }
-    // While waiting, the current keeps shoving Pip around.
+    // While waiting, Pip fights the current: swims hard forward, gains a little, then a gust
+    // shoves it back with a tumble; it rights itself and tries again.
     if ((this.phase === 'hold' || this.phase === 'approach') && g.drive === 'hover') {
       this.struggle = Math.min(1, this.struggle + dt);
+      const T = 3.6;
+      const prev = this.cycle;
+      this.cycle = (this.cycle + dt) % T;
+      const c = this.cycle;
+      const back = 4.0; // how far a gust pushes Pip back
+      let zOff;
+      let roll = Math.sin(t * 2.4) * 0.12;
+      let effort = 1;
+      this.gusting = false;
+      if (c < 2.1) {
+        zOff = back - (back + 0.7) * Ease.inOutSine(c / 2.1); // fighting forward, slowly
+      } else if (c < 2.8) {
+        const k = (c - 2.1) / 0.7;
+        zOff = -0.7 + (back + 0.7) * Ease.outCubic(k); // shoved back
+        roll = Math.sin(k * Math.PI) * 1.3;
+        effort = 0.4;
+        this.gusting = true;
+      } else {
+        zOff = back; // shaking it off
+        roll = Math.sin((c - 2.8) * 9) * 0.25 * (1 - (c - 2.8) / 0.8);
+      }
+      if (prev < 2.1 && c >= 2.1 && this.phase === 'hold') {
+        g.audio.whoosh();
+        g.shake(0.18);
+        g.pip.setExpression('scared', 1.1);
+      }
+      if (prev < 2.8 && c >= 2.8 && this.phase === 'hold') g.pip.setExpression('determined');
+      this.streaks.flow = this.gusting ? 24 : 13;
       const H = this.holdWorld;
-      g.hoverPoint.set(H.x + Math.sin(t * 1.6) * 0.75 * this.struggle, H.y + Math.sin(t * 2.3) * 0.25, H.z);
-      g.pip.swimmer.extraRoll = Math.sin(t * 2.1) * 0.28 * this.struggle;
-      g.pip.swimmer.effort = 0.9 * this.struggle;
+      const s = this.struggle;
+      g.hoverPoint.set(H.x + Math.sin(t * 1.3) * 0.35 * s, H.y + Math.sin(t * 2.3) * 0.2 - (this.gusting ? 0.25 : 0), H.z + zOff * s);
+      g.pip.swimmer.extraRoll = roll * s;
+      g.pip.swimmer.effort = effort * s;
     } else if (this.struggle > 0 && this.phase !== 'near' && this.phase !== 'capture') {
       this.struggle = Math.max(0, this.struggle - dt * 2);
+      this.gusting = false;
+      this.streaks.flow = 13;
       g.pip.swimmer.effort = 0.9 * this.struggle;
       if (g.drive !== 'hover') g.pip.swimmer.extraRoll *= 0.9;
     }
@@ -118,7 +162,7 @@ export class PowerCurrent extends Encounter {
   }
 
   holdShot() {
-    return { target: this.L(3.2, 0.6, 2.2), yaw: -0.45, pitch: 0.3, radius: 8.6, rate: 1.5, rotRate: 1 };
+    return { target: this.L(-0.8, 0.5, 8.6), yaw: -1.2, pitch: 0.18, radius: 5.2, rate: 1.5, rotRate: 1 };
   }
 
   async success() {
@@ -147,20 +191,28 @@ export class PowerCurrent extends Encounter {
     const H = this.holdWorld;
     g.pip.setExpression('scared');
     g.audio.whoosh();
-    g.shake(0.4);
+    g.shake(0.45);
+    this.gusting = true;
+    this.streaks.flow = 28;
     g.drive = 'script';
+    const P0 = g.pip.position.clone();
     await this.sched.tween(
-      1.5,
+      1.2,
       (k) => {
-        g.pip.position.set(H.x + Math.sin(k * Math.PI) * 3.6, H.y + Math.sin(k * TAU) * 1.0, H.z + Math.sin(k * Math.PI) * 0.8);
+        g.pip.position.set(P0.x + Math.sin(k * 5) * 0.4, P0.y + Math.sin(k * Math.PI) * 0.6, P0.z + 6.5 * k);
         g.pip.swimmer.extraRoll = k * TAU * 1.5;
       },
-      Ease.inOutSine,
+      Ease.outCubic,
     );
+    this.gusting = false;
+    this.streaks.flow = 13;
     g.pip.swimmer.extraRoll = 0;
-    g.pip.setExpression('dizzy', 1.8);
+    g.pip.setExpression('dizzy', 1.6);
+    await this.sched.wait(0.5);
+    g.pip.setExpression('determined');
+    await this.swim([[this.hold.x, this.hold.y, this.hold.z + 4.0]], 1.3, Ease.inOutSine, () => (g.pip.swimmer.effort = 1));
+    this.cycle = 0;
     g.hoverAt(H);
-    await this.sched.wait(1.0);
   }
 
   async capture() {
@@ -172,15 +224,17 @@ export class PowerCurrent extends Encounter {
     g.pip.setExpression('scared');
     g.rig.setShot({ target: this.L(4, 1, 6), yaw: 0.25, pitch: 0.28, radius: 10, rate: 1, rotRate: 0.6 });
     g.drive = 'script';
-    // Swept along the stream: from where Pip is, down the current and away downstream.
-    const u0 = Math.min(0.9, Math.max(0, (P0.x - this.bandAt.x) / this.band.length + 0.5));
+    // Swept away down the stream: back the way Pip came, tumbling, out of sight.
+    const P0w = g.pip.position.clone();
+    const u0 = Math.min(0.9, Math.max(0, (P0.z - this.bandAt.z) / this.band.length + 0.5));
     const c = new THREE.Vector3();
     await this.sched.tween(
       3.2,
       (k) => {
-        this.band.curve.getPointAt(Math.min(1, u0 + (1 - u0) * k), c).add(this.bandAt);
+        this.band.curve.getPointAt(Math.min(1, u0 + (1 - u0) * k), c);
+        this.band.group.localToWorld(c);
         const off = (1 - k) * (1 - k);
-        g.pip.position.copy(this.L(lerp(P0.x, c.x, 1 - off), lerp(P0.y, c.y, 1 - off) + Math.sin(k * 20) * 0.3, lerp(P0.z, c.z, 1 - off)));
+        g.pip.position.set(lerp(P0w.x, c.x, 1 - off), lerp(P0w.y, c.y, 1 - off) + Math.sin(k * 20) * 0.3, lerp(P0w.z, c.z, 1 - off));
         g.pip.swimmer.extraRoll = k * 14;
         g.pip.group.scale.setScalar(1 - k * 0.55);
       },

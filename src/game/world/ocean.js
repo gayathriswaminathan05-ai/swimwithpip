@@ -410,11 +410,11 @@ export class Ocean {
   }
 
   _buildShared() {
-    const mk = (opts) => shared(litMaterial(opts));
+    const mk = (opts) => shared(litMaterial({ nearFade: true, ...opts }));
     this.coralGlowU = { value: 0.35 };
     this.homeGlowU = { value: 1.5 };
     this.mats = {
-      floor: mk({}),
+      floor: mk({ nearFade: false }),
       rock: mk({}),
       coral: mk({ glowUniform: this.coralGlowU }),
       coralGlow: mk({ glowUniform: this.homeGlowU }),
@@ -448,9 +448,9 @@ export class Ocean {
     this.kit = kit;
     const tex = kit.texture;
     // vertexColors: true — each model variant's colour is stored per vertex.
-    this.mats.kit = shared(litMaterial({ map: tex, vertexColors: true }));
-    this.mats.kitSway = shared(litMaterial({ map: tex, vertexColors: true, sway: makeSwayUniforms({ amp: 0.12, height: 1.2, speed: 1.4 }) }));
-    this.mats.kitGlow = shared(litMaterial({ map: tex, vertexColors: true, emissive: 0x9a8aff, emissiveIntensity: 0.35 }));
+    this.mats.kit = shared(litMaterial({ map: tex, vertexColors: true, nearFade: true }));
+    this.mats.kitSway = shared(litMaterial({ map: tex, vertexColors: true, nearFade: true, sway: makeSwayUniforms({ amp: 0.12, height: 1.2, speed: 1.4 }) }));
+    this.mats.kitGlow = shared(litMaterial({ map: tex, vertexColors: true, nearFade: true, emissive: 0x9a8aff, emissiveIntensity: 0.35 }));
   }
 
   // ---------- Chunks ----------

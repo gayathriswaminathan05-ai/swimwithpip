@@ -930,6 +930,7 @@ export class Game {
     this.currentEnc = enc;
     this.ui.hideCaption();
     this.cameraMode = 'encounter';
+    this.seaLife.quiet = true; // passing sea life keeps clear of the hurdle (a clean stage)
     this.audio.danger();
     enc.phase = 'approach';
     await enc.approach();
@@ -995,6 +996,7 @@ export class Game {
       }
     }
     enc.phase = 'done';
+    this.seaLife.quiet = false;
     return 'cleared';
   }
 

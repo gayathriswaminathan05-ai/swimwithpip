@@ -9,6 +9,7 @@ export const globalUniforms = {
   uCaustic: { value: 1 }, // strength of dappled sunlight on upward-facing surfaces
   uCausticColor: { value: new THREE.Color(0xfff4d6) },
   uCurrentPush: { value: new THREE.Vector2() }, // water current bending swaying plants (x, z)
+  uNearFade: { value: new THREE.Vector2(1.6, 3.6) }, // scenery closer than x is gone, fully there by y
 };
 
 /**
@@ -28,6 +29,7 @@ export function litMaterial({
   flat = false,
   rim = true,
   caustics = true,
+  nearFade = false, // scenery: dissolve when the camera comes too close (no screen-filling shapes)
   ...opts
 } = {}) {
   const mat = new THREE.MeshLambertMaterial({ flatShading: flat, vertexColors, ...opts });
@@ -40,6 +42,7 @@ export function litMaterial({
   if (instancePhase) mat.defines.INST_PHASE = '';
   if (rim) mat.defines.RIM = '';
   if (caustics) mat.defines.CAUSTICS = '';
+  if (nearFade) mat.defines.NEAR_FADE = '';
   mat.onBeforeCompile = (shader) => {
     shader.uniforms.uTime = globalUniforms.uTime;
     shader.uniforms.uGlow = glow;
@@ -48,19 +51,49 @@ export function litMaterial({
     shader.uniforms.uCaustic = globalUniforms.uCaustic;
     shader.uniforms.uCausticColor = globalUniforms.uCausticColor;
     shader.uniforms.uCurrentPush = globalUniforms.uCurrentPush;
+    shader.uniforms.uNearFade = globalUniforms.uNearFade;
     if (swim) Object.assign(shader.uniforms, swim);
     if (sway) Object.assign(shader.uniforms, sway);
     if (flap) Object.assign(shader.uniforms, flap);
     shader.vertexShader = shader.vertexShader
-      .replace('#include <common>', VERT_PARS)
-      .replace('#include <begin_vertex>', VERT_BEGIN);
+      .replace('#include <common>', VERT_PARS + NEAR_VERT_PARS)
+      .replace('#include <begin_vertex>', VERT_BEGIN)
+      .replace('#include <project_vertex>', '#include <project_vertex>' + NEAR_VERT);
     shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', FRAG_PARS)
+      .replace('#include <common>', FRAG_PARS + NEAR_FRAG_PARS)
+      .replace('#include <clipping_planes_fragment>', '#include <clipping_planes_fragment>' + NEAR_FRAG)
       .replace('#include <emissivemap_fragment>', FRAG_EMISSIVE);
   };
   mat.customProgramCacheKey = () => 'pip-lit-2';
   return mat;
 }
+
+// Near fade: a dithered dissolve for scenery very close to the camera.
+const NEAR_VERT_PARS = /* glsl */ `
+#ifdef NEAR_FADE
+varying float vNearDepth;
+#endif
+`;
+const NEAR_VERT = /* glsl */ `
+#ifdef NEAR_FADE
+vNearDepth = -mvPosition.z;
+#endif
+`;
+const NEAR_FRAG_PARS = /* glsl */ `
+#ifdef NEAR_FADE
+varying float vNearDepth;
+uniform vec2 uNearFade;
+#endif
+`;
+const NEAR_FRAG = /* glsl */ `
+#ifdef NEAR_FADE
+{
+  float keep = smoothstep(uNearFade.x, uNearFade.y, vNearDepth);
+  float n = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
+  if (keep < n) discard;
+}
+#endif
+`;
 
 const FRAG_PARS = /* glsl */ `#include <common>
 varying float vGlow;

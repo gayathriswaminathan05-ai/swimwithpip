@@ -65,7 +65,7 @@ export class Encounter {
     this._rockMats = this._rockMats || new Map();
     let mat = this._rockMats.get(tint);
     if (!mat) {
-      mat = litMaterial({ color: tint });
+      mat = litMaterial({ color: tint, nearFade: true });
       this._rockMats.set(tint, mat);
     }
     const geo = this.game.ocean.geos.rocks[variant % this.game.ocean.geos.rocks.length];

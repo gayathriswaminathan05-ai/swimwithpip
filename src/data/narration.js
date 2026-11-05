@@ -15,7 +15,16 @@ export const NARRATION = {
     'You have three lives, and each wrong answer costs one. There’s no timer, so take your time. Ready? Let’s swim!',
 };
 
-// Recorded narration. Add a line here once its audio file is in public/audio/narration/, e.g.
-//   intro1: 'intro1.mp3',
-// Lines without a recording are read by the device's speech voice instead.
-export const NARRATION_FILES = {};
+// Recorded narration (AI storyteller voice "Isla", ElevenLabs via Higgsfield), one file per line in
+// public/audio/narration/. Lines without a recording are read by the device's speech voice instead.
+export const NARRATION_FILES = {
+  intro1: 'intro1.mp3',
+  intro2: 'intro2.mp3',
+  intro3: 'intro3.mp3',
+  intro4: 'intro4.mp3',
+  intro5: 'intro5.mp3',
+  intro6: 'intro6.mp3',
+  intro7: 'intro7.mp3',
+  intro8: 'intro8.mp3',
+  welcome: 'welcome.mp3',
+};

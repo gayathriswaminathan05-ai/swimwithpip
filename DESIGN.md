@@ -63,7 +63,7 @@ Loop: **explore → danger appears → question → feedback → escape or setba
 
 | # | Area | Hurdle | Encounter | Correct-answer escape | Third-mistake capture |
 |---|---|---|---|---|---|
-| 1 | Lost Waters | Powerful current | A visible stream of rushing water (flowing lines, carried sand, seaweed and bubbles) shoves Pip off course | Pip banks out of the stream into a sheltered channel between boulders | Pip is swept away down the stream |
+| 1 | Lost Waters | Powerful current | A visible stream of rushing water (flowing lines, carried sand, seaweed and bubbles) runs straight against Pip. Pip swims hard, gains a little, then a gust shoves it back with a tumble, over and over | Pip banks out of the stream into a sheltered channel between boulders | A huge gust slams Pip far back (wrong answer); on capture Pip is swept away back down the stream |
 | 2 | Lost Waters | Abandoned net | A billowing net with floats and weights blocks the passage | Pip squeezes (squash) through a torn opening | The net wraps around Pip and lifts away |
 | 3 | Dangerous Depths | Octopus ambush | An orange-red octopus hides behind a big rock, eyes peeking over it, tentacles draped over and around it | Tentacles coil, then strike where Pip *was*; Pip barrel-rolls around the side of the rock | Tentacles wrap and pull Pip behind the rock |
 | 4 | Dangerous Depths | Falling rocks | Rocks trickle down a canyon; a boulder teeters | Pip dives under a boulder arch while rocks bounce off it | Rocks fall around Pip and seal it in |
@@ -187,22 +187,27 @@ behind a churning front, kicks up billowing sand along the floor and leaves the 
 fades out close to the camera, so it never washes over the view. No hard geometric primitives are
 used for effects.
 
+**Nothing fills the screen by accident**
+
+Scenery (reef, corals, kelp, rocks, hurdle props) dissolves with a soft dither when the camera gets
+within a few units of it, so nothing near the lens can fill the screen as a giant faceted shape.
+Pip, the creatures and the seabed are never faded. Passing sea life also keeps clear while a
+hurdle is on screen.
+
 **Narration**
 
 A warm, playful storyteller reads the opening story and then the welcome card, including how to
 play. Captions show the same words. The full script, with an emotional direction for each line,
 is in `src/data/narration.js` and `design/narration-script.md`.
-- **Recorded lines:** any line with a recording (listed in `NARRATION_FILES`, files in
-  `public/audio/narration/`) plays that clip.
-- **Other lines:** the device's speech voice reads them, choosing the friendliest English voice
-  available, slightly brighter. Pip's quoted thoughts ("What is this shiny thing?") are higher
-  and bouncier.
+- **Recorded lines:** every line is recorded with an expressive AI storyteller voice ("Isla",
+  ElevenLabs via Higgsfield). The files are in `public/audio/narration/` and listed in
+  `NARRATION_FILES`, and play in sync with the captions. About 50 seconds, under 1 MB.
+- **Fallback:** any line without a recording is read by the device's speech voice (the friendliest
+  English voice available). Pip's quoted thoughts are higher and bouncier.
 - **Staying in sync:** the intro waits at natural pauses for the narrator, so captions and voice
   never drift apart.
 - **Controls:** Skip intro and "Let's swim!" stop the voice, pause pauses it, and mute silences it.
   Settings has a "Narrator reads the story" switch. Automated test runs stay silent.
-- **Limits of device voices:** they cannot sound truly expressive, so recorded, expressive
-  narration is the intended final form.
 
 ## 4. Mobile interface plan (portrait first)
 
