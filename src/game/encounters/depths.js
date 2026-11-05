@@ -42,7 +42,7 @@ export class OctopusAmbush extends Encounter {
     return 'octopus';
   }
   hint() {
-    return 'An octopus slips out from behind the rock, reaching for Pip. Answer to slip past.';
+    return 'An octopus creeps out from behind the rock, reaching for Pip. Answer to slip past.';
   }
   get captureText() {
     return 'The octopus wrapped Pip up in its arms.';
@@ -64,14 +64,21 @@ export class OctopusAmbush extends Encounter {
     this.rockTop = box.max.y - 0.25;
     this.rockFront = box.max.z;
     this.rockBack = box.min.z;
+    this.rockHalfW = (box.max.x - box.min.x) / 2;
+    this.rockX = (box.max.x + box.min.x) / 2;
 
     this.octo = new Octopus();
     this.S = 1.25;
     this.octo.group.scale.setScalar(this.S);
-    // Hidden behind the rock → cresting its left edge → out in the open on the sand, in full view.
-    this.hidden = V(-0.5, this.rockTop - 2.9, this.rockBack + 0.2);
-    this.crest = V(-1.6, this.rockTop + 0.1, (this.rockFront + this.rockBack) / 2);
-    this.open = V(-1.5, this.floorAt(-1.5, this.rockFront + 1.4) + 0.1, this.rockFront + 1.4);
+    // Hidden behind the rock (only the top of its head peeks over), then it creeps out around the
+    // rock's left side along the sand, never through the rock, and settles in the open.
+    const onSand = (x, z) => V(x, this.floorAt(x, z) + 0.08, z);
+    const sx = this.rockX - this.rockHalfW - 1.7;
+    const mid = (this.rockFront + this.rockBack) / 2;
+    this.hidden = onSand(this.rockX + 0.2, this.rockBack - 1.0);
+    this.emerge = [this.hidden.clone(), onSand(sx + 0.9, this.rockBack - 0.9), onSand(sx, mid), onSand(sx + 0.2, this.rockFront + 0.5)];
+    this.open = onSand(-1.5, this.rockFront + 1.4);
+    this.emerge.push(this.open.clone());
     this.octo.group.position.copy(this.hidden);
     this.group.add(this.octo.group);
 
@@ -116,6 +123,11 @@ export class OctopusAmbush extends Encounter {
       const striker = this.strikers.includes(arm);
       if (this.mode === 'hidden') {
         set(arm, [a, a.clone().add(V(o.x * 0.6, -0.7, o.z * 0.4)), a.clone().add(V(o.x * 1.2, -1.6, o.z * 0.8))], { curlR: 0.4, curlSide: V(o.x, 0, o.z) }, 3);
+        continue;
+      }
+      if (this.mode === 'recoil') {
+        // Startled: arms snatched in close under the body.
+        set(arm, [a, a.clone().add(V(o.x * 0.55, -0.25, o.z * 0.55)), a.clone().add(V(o.x * 0.95, -0.35, o.z * 0.95))], { curlR: 0.3, curlSide: V(-o.x, 1, -o.z) }, 7);
         continue;
       }
       if (this.mode === 'climb') {
@@ -180,16 +192,19 @@ export class OctopusAmbush extends Encounter {
   async approach() {
     const g = this.game;
     const swim = super.approach();
-    await this.sched.wait(1.1);
-    // Out it comes: over the rock's edge and down onto the sand, in full view.
+    await this.sched.wait(0.4);
+    // Frame the rock the way the hold does, so the octopus's whole route around the rock is in view
+    // and Pip, arriving from behind the camera, never passes in front of it.
+    g.rig.setShot({ ...this.holdShot(), rate: 1.3, rotRate: 0.9 });
+    await this.sched.wait(0.7);
+    // Out it comes: around the rock's side and onto the sand, in full view.
     g.audio.danger();
     if (g.seaLife) g.seaLife.quiet = true; // a clean stage: passing schools keep away
     this.octo.setEyes(1);
     this.mode = 'climb';
     const P = this.octo.group.position;
-    const h0 = this.hidden.clone();
-    await this.sched.tween(0.8, (k) => P.lerpVectors(h0, this.crest, k), Ease.outCubic);
-    await this.sched.tween(0.9, (k) => P.lerpVectors(this.crest, this.open, k), Ease.inOutSine);
+    const route = new THREE.CatmullRomCurve3(this.emerge, false, 'centripetal');
+    await this.sched.tween(2.0, (k) => route.getPointAt(k, P), Ease.inOutSine);
     this.mode = 'hold';
     await swim;
     g.pip.setExpression('scared', 2);
@@ -201,15 +216,33 @@ export class OctopusAmbush extends Encounter {
 
   async success() {
     const g = this.game;
-    // Anticipation: arms rear up…
-    this.mode = 'coil';
-    this.octo.setEyes(1, 1);
-    await this.sched.wait(0.45);
-    // …then strike where Pip was a moment ago, as Pip twists away around the rock's right side.
-    this.mode = 'strike';
+    // The help: a burst of bubbles erupts from the sand right in front of the octopus. Startled,
+    // it squeezes its eyes shut and snatches its arms in, and Pip slips past around the rock.
+    const vx = this.open.x + 1.6;
+    const vz = this.open.z + 1.3;
+    const vent = this.L(vx, this.floorAt(vx, vz) + 0.1, vz);
+    g.audio.steam();
+    let tb = 0;
+    this.sched
+      .tween(1.8, (k, dt) => {
+        tb -= dt;
+        while (tb <= 0) {
+          tb += 0.03;
+          g.fx.bubbleBurst(vent, 3, { spread: 0.7, speed: 1.4, up: 5 * (1 - k * 0.5), size: 0.22 });
+        }
+      })
+      .catch(() => {});
+    await this.sched.wait(0.25);
+    this.mode = 'recoil';
+    this.octo.setEyes(0.05, 1);
+    const P = this.octo.group.position;
+    const p0 = P.clone();
+    const back = p0.clone().add(V(-0.4, 0, -0.8));
+    this.sched.tween(0.6, (k) => P.lerpVectors(p0, back, k), Ease.outCubic).catch(() => {});
+    await this.sched.wait(0.35);
+    g.pip.setExpression('determined');
     g.audio.whoosh();
     g.rig.setShot(this.followShot({ yaw: 0.75, pitch: 0.2, radius: 3.8 }));
-    let swapped = false;
     const side = this.fl + 2.2;
     await this.swim(
       [
@@ -221,17 +254,11 @@ export class OctopusAmbush extends Encounter {
       ],
       2.8,
       Ease.inOutSine,
-      (k) => {
-        g.pip.swimmer.extraRoll = smoothstep(0.12, 0.55, k) * TAU;
-        if (!swapped && k > 0.5) {
-          swapped = true;
-          this.mode = 'tangled';
-          this.octo.setEyes(0.6, 1);
-          g.rig.setShot(this.followShot({ yaw: 0.25, pitch: 0.18, radius: 3.6 }));
-        }
-      },
+      (k) => (g.pip.swimmer.extraRoll = smoothstep(0.12, 0.55, k) * TAU),
     );
     g.pip.swimmer.extraRoll = 0;
+    this.octo.setEyes(0.6, 1); // grumpy, peeking again
+    this.mode = 'hold';
     if (g.seaLife) g.seaLife.quiet = false;
   }
 
@@ -328,6 +355,7 @@ class FallingRocks {
 
   _impact(p, size, strong) {
     const g = this.enc.game;
+    this.enc.onRockImpact?.(p, size);
     g.fx.dustPuff(this.enc.L(p.x, p.y, p.z, this._p), Math.round(6 + size * 14), { color: 0x6f7c8c, speed: 3 + size * 3 });
     if (!strong) return;
     if (this.thudT <= 0) {
@@ -444,6 +472,21 @@ export class Rockfall extends Encounter {
     this.rocks = new FallingRocks(this, 44);
     this.trickle = 0;
     this.rumbleT = 1.5;
+    this.dodgeT = 0;
+    this.dodgeTo = V(0, 0, 0);
+    this.dodgeAt = V(0, 0, 0);
+  }
+
+  /** A big rock smashing down near Pip makes it jerk away from it. */
+  onRockImpact(p, size) {
+    if (this.phase !== 'hold' || size < 0.6) return;
+    const pl = this.pipLocal();
+    const dx = pl.x - p.x;
+    if (Math.abs(dx) < 3 && Math.abs(pl.z - p.z) < 3.5) {
+      this.dodgeTo.set(clamp(this.dodgeAt.x + Math.sign(dx || 1) * 1.4, -1.6, 1.6), 0.5, this.dodgeAt.z);
+      this.dodgeT = 0.7;
+      this.game.pip.shiver = 1.4;
+    }
   }
 
   /** Boulders crash down one after another and lock together into an arch: the way through. */
@@ -479,6 +522,22 @@ export class Rockfall extends Encounter {
     super.update(dt);
     this.rocks.update(dt);
     if (this.boulder.visible) this.boulder.rotation.z = Math.sin(t * 3.1) * (this.phase === 'hold' ? 0.06 : 0.02);
+    // Terrified under the barrage: darting from spot to spot, trembling, glancing up and around.
+    const g = this.game;
+    if (this.phase === 'hold' && g.drive === 'hover') {
+      this.dodgeT -= dt;
+      if (this.dodgeT <= 0) {
+        this.dodgeT = 0.4 + Math.random() * 0.55;
+        this.dodgeTo.set((Math.random() - 0.5) * 3.0, (Math.random() - 0.35) * 1.3, (Math.random() - 0.5) * 1.4);
+      }
+      const px = this.dodgeAt.x;
+      this.dodgeAt.lerp(this.dodgeTo, damp(8, dt));
+      const H = this.holdWorld;
+      g.hoverPoint.set(H.x + this.dodgeAt.x, H.y + this.dodgeAt.y, H.z + this.dodgeAt.z);
+      g.pip.swimmer.extraRoll = clamp(-(this.dodgeAt.x - px) / Math.max(dt, 1e-3) * 0.12, -0.7, 0.7);
+      g.pip.swimmer.effort = 1;
+      this.distress(t, 1.2, 'scared');
+    }
     if (this.phase === 'approach' || this.phase === 'hold' || this.phase === 'near') {
       // A steady barrage: mostly mid-sized rocks with the odd big boulder, thrown down hard.
       const hold = this.phase === 'hold';
@@ -508,6 +567,8 @@ export class Rockfall extends Encounter {
 
   async success() {
     const g = this.game;
+    this.calm();
+    g.pip.swimmer.extraRoll = 0;
     g.audio.rumble(2.4);
     g.shake(0.5);
     // The right answer brings the shelter crashing into place ahead of Pip: show it wide first.
@@ -598,7 +659,7 @@ export class PredatorChase extends Encounter {
     return 'predator';
   }
   hint() {
-    return 'A hungry predator is closing in. Answer to dash into the narrow passage.';
+    return 'A hungry predator is closing in. Answer to find a way through the rocks.';
   }
   get captureText() {
     return 'The predator caught Pip.';
@@ -615,6 +676,9 @@ export class PredatorChase extends Encounter {
       this.rock(Math.cos(a) * 2.45, Math.sin(a) * 2.35, wallZ + (i % 2) * 0.2, 1.75, 1.7, 2.4, DEEP_ROCKS[i % 4], i, a);
     }
     this.rock(0, f + 1.4, wallZ, 3.4, 3.2, 3.2, DEEP_ROCKS[1], 2, 0.4);
+    // The narrow passage is blocked by a loose boulder until a right answer knocks it free.
+    this.plug = this.rock(0, 0.05, wallZ + 0.3, 2.6, 2.4, 2.2, DEEP_ROCKS[2], 3, 0.5);
+    this.plugAt = this.plug.position.clone();
     for (const side of [-1, 1]) {
       this.rock(side * 4.9, f + 3.4, wallZ, 2.8, 8.6, 3.4, DEEP_ROCKS[side > 0 ? 2 : 3], 1, 0.8);
       this.rock(side * 7.6, f + 3.0, wallZ - 0.6, 3.2, 8, 3.6, DEEP_ROCKS[side > 0 ? 0 : 1], 0, 1.4);
@@ -666,6 +730,23 @@ export class PredatorChase extends Encounter {
   async success() {
     const g = this.game;
     const pred = this.pred;
+    // The help: the loose boulder in the rock wall tumbles away, opening a gap just Pip's size.
+    // Cut to a high look over Pip at the wall face (the predator just out of shot behind) so the
+    // boulder falling away is clearly seen.
+    g.rig.setShot({ target: this.L(-0.6, 0.3, 1.0), yaw: 0.45, pitch: 0.3, radius: 4.8, rate: 2, rotRate: 1.5 }, true);
+    await this.sched.wait(0.35);
+    g.audio.thud();
+    g.shake(0.35);
+    const plug = this.plug;
+    const p0 = plug.position.clone();
+    const r0 = plug.rotation.x;
+    g.fx.dustPuff(this.L(p0.x, p0.y, p0.z + 1), 18, { color: 0x6f7c8c });
+    await this.sched.tween(0.8, (k) => {
+      plug.position.set(p0.x + k * 0.4, p0.y - k * k * 2.2, p0.z - k * 2.8);
+      plug.rotation.x = r0 - k * 1.6;
+    }, Ease.inQuad);
+    plug.visible = false;
+    await this.sched.wait(0.2);
     this.predMode = 'script';
     g.pip.setExpression('determined');
     g.audio.whoosh();
@@ -824,7 +905,7 @@ export class Vents extends Encounter {
     return 'vents';
   }
   hint() {
-    return 'Scalding water bursts from the vents. Answer to dash between the bursts.';
+    return 'Scalding water roars from every vent. Answer to wait for a lull.';
   }
   get captureText() {
     return 'A scalding plume swept Pip up and away.';
@@ -866,8 +947,13 @@ export class Vents extends Encounter {
     const g = this.game;
     let hot = null;
     let hotS = 0;
+    // While the question is up the vents roar together, a wall of scalding water with no way through.
+    const wall = this.auto && (this.phase === 'hold' || this.phase === 'near' || (this.phase === 'approach' && this.pipLocal().z < 14));
     for (const v of this.vents) {
-      if (this.auto) {
+      if (wall) {
+        v.plume.target = 1;
+        v.burst = 0.4;
+      } else if (this.auto) {
         v.timer -= dt;
         if (v.timer <= 0) {
           v.timer = 3 + Math.random() * 2.5;
@@ -915,26 +1001,26 @@ export class Vents extends Encounter {
   async success() {
     const g = this.game;
     this.auto = false;
-    this.vents.forEach((v) => (v.plume.target = 0.15));
+    // The help: the vents fall quiet one after another, a lull just long enough to dash through;
+    // each roars back to life behind Pip.
+    this.vents.forEach((v, i) => this.sched.wait(i * 0.15).then(() => {
+      v.plume.target = 0.08;
+      v.burst = 0;
+    }).catch(() => {}));
+    g.pip.setExpression('hopeful', 0.7);
+    await this.sched.wait(0.8);
     g.pip.setExpression('determined');
     g.rig.setShot(this.followShot({ yaw: 0.5, pitch: 0.72, radius: 5.4 }));
     const [W1, W2, W3] = this.waypoints;
-    this.burst(0, 1.0);
-    await this.sched.wait(0.6);
-    this.burst(1, 1.1);
     await this.dash(W1);
-    await this.sched.wait(0.25);
-    this.burst(0, 1.0);
+    this.burst(0, 1.4);
     await this.dash(W2);
-    this.burst(1, 1.0);
-    this.burst(3, 0.9);
-    await this.sched.wait(0.6);
+    this.burst(1, 1.4);
     await this.dash(W3);
-    this.burst(2, 1.1);
-    await this.sched.wait(0.3);
+    this.burst(2, 1.4);
     g.audio.whoosh();
-    this.sched.wait(0.6).then(() => this.burst(3, 1.2)).catch(() => {});
     await this.swim([[0.2, 0, -9], [0, 0, -this.exit]], 1.5, Ease.inOutSine);
+    this.burst(3, 1.4);
     g.pip.setExpression('happy', 2);
     this.auto = true;
   }

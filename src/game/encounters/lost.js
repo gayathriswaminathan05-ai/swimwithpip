@@ -30,7 +30,7 @@ export class PowerCurrent extends Encounter {
     return 'current';
   }
   hint() {
-    return 'A powerful current keeps pushing Pip back. Answer to reach the sheltered channel.';
+    return 'A powerful current keeps pushing Pip back. Answer to catch a lull in the current.';
   }
   get captureText() {
     return 'The current swept Pip far, far away.';
@@ -95,9 +95,9 @@ export class PowerCurrent extends Encounter {
     const g = this.game;
     // The stream carries sand, bubbles and bits of seaweed along and bends the plants.
     const near = Math.abs(this.pipLocal().z) < 30 && this.phase !== 'done';
-    this.band.target = near || this.phase === 'idle' ? 1 : 0;
-    this.streaks.target = this.band.target;
-    if (near) {
+    this.band.target = near || this.phase === 'idle' ? (this.lull ? 0.12 : 1) : 0;
+    this.streaks.target = this.lull ? 0.06 : this.band.target;
+    if (near && !this.lull) {
       g.currentPushTarget.set(0, this.phase === 'capture' || this.gusting ? 3.4 : 2.2);
       this.debrisT = (this.debrisT || 0) - dt;
       while (this.debrisT <= 0) {
@@ -138,9 +138,9 @@ export class PowerCurrent extends Encounter {
       if (prev < 2.1 && c >= 2.1 && this.phase === 'hold') {
         g.audio.whoosh();
         g.shake(0.18);
-        g.pip.setExpression('scared', 1.1);
       }
-      if (prev < 2.8 && c >= 2.8 && this.phase === 'hold') g.pip.setExpression('determined');
+      // Distressed the whole time: a worried frown while fighting forward, terrified in a gust.
+      this.distress(t, this.gusting ? 1.3 : 0.8, this.gusting || c >= 2.8 ? 'scared' : 'worried');
       this.streaks.flow = this.gusting ? 24 : 13;
       const H = this.holdWorld;
       const s = this.struggle;
@@ -167,23 +167,31 @@ export class PowerCurrent extends Encounter {
 
   async success() {
     const g = this.game;
-    g.audio.whoosh();
+    // The help: the current eases into a lull, and Pip makes a dash for it.
+    this.calm();
+    this.lull = true;
+    this.gusting = false;
     g.pip.swimmer.extraRoll = 0;
-    g.rig.setShot(this.followShot({ yaw: 0.3, pitch: 0.42, radius: 4.2 }));
+    g.pip.setExpression('hopeful');
+    g.audio.chime?.();
+    await this.sched.wait(0.7);
+    g.pip.setExpression('determined');
+    g.audio.whoosh();
+    g.rig.setShot(this.followShot({ yaw: 0.6, pitch: 0.25, radius: 4.6 }));
     await this.swim(
       [
-        [1.8, 0.2, 5],
-        [5.6 + 1.9, -0.4, 2.4],
-        [7.7, -0.6, -1.5],
-        [7.6, -0.4, -6.2],
-        [4, 0, -10.5],
+        [this.hold.x, this.hold.y + 0.1, this.hold.z - 2.5],
+        [0.4, 0.3, 0],
+        [0, 0.1, -9],
         [0, 0, -this.exit],
       ],
-      4.4,
+      3.4,
       Ease.inOutSine,
-      (k) => (g.pip.swimmer.effort = k < 0.2 ? 0.8 : 0),
+      (k) => (g.pip.swimmer.effort = k < 0.6 ? 1 : 0.3),
     );
     g.pip.swimmer.effort = 0;
+    g.pip.setExpression('happy', 2);
+    this.lull = false;
   }
 
   async nearMiss() {
@@ -207,9 +215,10 @@ export class PowerCurrent extends Encounter {
     this.gusting = false;
     this.streaks.flow = 13;
     g.pip.swimmer.extraRoll = 0;
+    this.calm();
     g.pip.setExpression('dizzy', 1.6);
     await this.sched.wait(0.5);
-    g.pip.setExpression('determined');
+    g.pip.setExpression('worried');
     await this.swim([[this.hold.x, this.hold.y, this.hold.z + 4.0]], 1.3, Ease.inOutSine, () => (g.pip.swimmer.effort = 1));
     this.cycle = 0;
     g.hoverAt(H);
@@ -278,7 +287,13 @@ function netTexture(holeU, holeV, holeR) {
       ctx.fill();
     }
   }
-  // Torn opening with frayed strands.
+  // Torn opening with frayed strands (none while the net is still whole).
+  if (holeR <= 0) {
+    const whole = new THREE.CanvasTexture(c);
+    whole.colorSpace = THREE.SRGBColorSpace;
+    whole.anisotropy = 4;
+    return whole;
+  }
   const hx = holeU * W;
   const hy = (1 - holeV) * H;
   ctx.save();
@@ -311,7 +326,7 @@ export class GhostNet extends Encounter {
     return 'net';
   }
   hint() {
-    return 'An old fishing net blocks the way. Answer to find a gap to slip through.';
+    return 'An old fishing net blocks the way. Answer to tear a gap in it.';
   }
   get captureText() {
     return 'Pip got trapped in the abandoned net.';
@@ -335,7 +350,10 @@ export class GhostNet extends Encounter {
       uCenter: { value: new THREE.Vector3() },
       uTop: { value: NY + NH / 2 },
     };
-    const mat = new THREE.MeshLambertMaterial({ map: netTexture(holeU, holeV, 0.07), transparent: true, alphaTest: 0.35, side: THREE.DoubleSide });
+    // The net starts whole; a right answer tears the gap (see tear()).
+    this.holeUV = [holeU, holeV];
+    const mat = new THREE.MeshLambertMaterial({ map: netTexture(holeU, holeV, 0), transparent: true, alphaTest: 0.35, side: THREE.DoubleSide });
+    this.netMat = mat;
     mat.onBeforeCompile = (shader) => {
       Object.assign(shader.uniforms, this.netU, { uTime: globalUniforms.uTime });
       shader.vertexShader = shader.vertexShader
@@ -395,8 +413,31 @@ export class GhostNet extends Encounter {
     return { target: this.L(-0.8, -0.2, 3.3), yaw: 0.55, pitch: 0.06, radius: 6.8, rate: 1.6, rotRate: 1.1 };
   }
 
+  /** The help: a weak spot in the old net rips open, threads snapping. */
+  async tear() {
+    const g = this.game;
+    g.audio.thud();
+    g.shake(0.2);
+    const at = this.L(this.hole.x, this.hole.y, 0.1);
+    const steps = [0.018, 0.034, 0.05, 0.062, 0.07];
+    for (const [i, r] of steps.entries()) {
+      const old = this.netMat.map;
+      this.netMat.map = netTexture(this.holeUV[0], this.holeUV[1], r);
+      this.netMat.needsUpdate = true;
+      old.dispose();
+      g.fx.dust.emit(at, { count: 6, spread: 0.6 + i * 0.25, speed: 2.4, life: 1.4, size: 0.12, gravity: 0.6, drag: 1.2, color: 0xe8d6aa, alpha: 0.9 });
+      g.fx.bubbleBurst(at, 3);
+      this.netU.uPushAt.value.set(this.hole.x, this.hole.y);
+      this.netU.uPush.value = -0.5 * (1 - i / steps.length);
+      await this.sched.wait(0.11);
+    }
+    this.netU.uPush.value = 0;
+  }
+
   async success() {
     const g = this.game;
+    await this.tear();
+    g.pip.setExpression('hopeful', 0.8);
     this.sched.tween(0.8, (k) => (this.ring.opacity = k)).catch(() => {});
     await this.sched.wait(0.6);
     g.audio.whoosh();

@@ -74,7 +74,7 @@ explanation names the answer.
 
 ```
 pip-way-home/
-├── index.html               HTML overlays: loader, HUD, hurdle panel, quiz sheet, dialogs
+├── index.html               HTML overlays: splash, HUD, hurdle panel, quiz sheet, dialogs
 ├── src/
 │   ├── main.js              Boot + real loading progress
 │   ├── styles.css           Interface styles (ocean palette, hurdle panel, minimal quiz sheet)

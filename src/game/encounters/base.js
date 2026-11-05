@@ -77,6 +77,26 @@ export class Encounter {
     return m;
   }
 
+  /**
+   * Pip is frightened: wide eyes and an open mouth (or a worried frown), trembling, and quick
+   * darting glances around. Call every frame while it lasts; calm() ends it.
+   */
+  distress(t, level = 1, face = 'scared') {
+    const pip = this.game.pip;
+    pip.shiver = Math.max(pip.shiver, 0.55 * level);
+    const k = Math.floor(t * 2.6);
+    if (k !== this._glanceK) {
+      this._glanceK = k;
+      this._glance = [(Math.random() - 0.5) * 1.3, (Math.random() - 0.3) * 0.8];
+    }
+    pip.lookOverride = this._glance;
+    if (pip.exprName !== face) pip.setExpression(face);
+  }
+
+  calm() {
+    this.game.pip.lookOverride = null;
+  }
+
   /** Pip's position in this encounter's local space. */
   pipLocal(out = new THREE.Vector3()) {
     return out.copy(this.game.pip.position).sub(this.origin);

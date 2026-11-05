@@ -3,40 +3,109 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#04182b" />
+    <meta name="theme-color" content="#a3e4ec" />
     <meta name="description" content="Pip: The Long Swim Home — a 3D underwater quiz adventure. Answer questions to guide a lost deep-sea fish back to its school." />
     <title>Pip: The Long Swim Home</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 72 48%27%3E%3Cpath d=%27M8 24c10-16 32-18 44-6l12-10-3 16 3 16-12-10C40 42 18 40 8 24z%27 fill=%27%23ff8a5c%27/%3E%3Ccircle cx=%2722%27 cy=%2721%27 r=%275%27 fill=%27%23fff%27/%3E%3Ccircle cx=%2723%27 cy=%2721%27 r=%272.8%27 fill=%27%231a1030%27/%3E%3C/svg%3E" />
     <style>
-      /* Critical loader styles so progress is visible before the main bundle arrives. */
-      html, body { margin: 0; height: 100%; background: #04182b; color: #eafcff; }
-      #loader { position: fixed; inset: 0; display: grid; place-content: center; justify-items: center; gap: 14px;
-        background: radial-gradient(120% 80% at 50% 30%, #0d4a6b 0%, #06223a 55%, #030f1d 100%);
-        font-family: "Unbounded", "Lexend", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; z-index: 50; }
-      #loader .loader__title { margin: 0; font-size: 56px; letter-spacing: .02em; font-weight: 700; }
-      #loader .loader__sub { margin: -10px 0 8px; opacity: .8; letter-spacing: .12em; text-transform: uppercase; font-size: 12px; }
-      #loader .bar { width: min(260px, 70vw); height: 16px; border-radius: 99px; background: rgba(255,255,255,.18); overflow: hidden; }
-      #loader .bar__fill { height: 100%; width: 0%; background: linear-gradient(90deg, #2fc6e8, #17b39c); box-shadow: inset 0 4px 0 -1px rgba(255,255,255,.35); border-radius: inherit; transition: width .25s ease; }
-      #loader .loader__label { margin: 0; font-size: 14px; opacity: .85; font-variant-numeric: tabular-nums; }
-      #loader .loader__error { max-width: 300px; text-align: center; color: #ffd0d6; font-size: 15px; line-height: 1.4; }
-      #loader svg { width: 72px; height: 48px; }
+      /* Critical splash styles: inline so the splash paints before the main bundle arrives. */
+      html, body { margin: 0; height: 100%; background: #3aa6c2; color: #123247; }
+      #loader { position: fixed; inset: 0; z-index: 50; overflow: hidden; display: grid; grid-template-rows: 1fr auto; justify-items: center;
+        padding: max(20px, env(safe-area-inset-top)) 22px max(22px, env(safe-area-inset-bottom));
+        background: radial-gradient(70% 38% at 50% -6%, rgba(255, 253, 236, 0.95), rgba(255, 253, 236, 0) 70%),
+          linear-gradient(180deg, #d4f5f6 0%, #a3e4ec 36%, #62c5d7 70%, #3aa6c2 100%);
+        font-family: "Lexend", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; transition: opacity 700ms ease; }
+      #loader.is-leaving { opacity: 0; pointer-events: none; }
+      .splash__sea { position: absolute; inset: 0; pointer-events: none; }
+      .splash__ray { position: absolute; top: -8%; left: var(--x); width: var(--w); height: 92%; transform: rotate(var(--r)); transform-origin: 50% 0;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0)); filter: blur(16px); border-radius: 50%;
+        animation: splash-ray 6s ease-in-out var(--t) infinite alternate; }
+      .splash__bubble { position: absolute; bottom: -24px; left: var(--x); width: var(--s); height: var(--s); border-radius: 50%;
+        box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.8);
+        background: radial-gradient(circle at 32% 30%, rgba(255, 255, 255, 0.95) 0 16%, rgba(255, 255, 255, 0.14) 22%);
+        animation: splash-bubble var(--d) linear var(--t) infinite; }
+      .splash__reef { position: absolute; bottom: 0; height: min(30vh, 240px, 52vw); width: auto; aspect-ratio: 1; }
+      .splash__reef--l { left: 0; }
+      .splash__reef--r { right: 0; }
+      .splash__sand { position: absolute; left: 0; bottom: 0; width: 100%; height: calc(min(30vh, 240px, 52vw) * 0.19); }
+      .splash__weed { transform-box: fill-box; transform-origin: 50% 100%; animation: splash-sway 4.5s ease-in-out infinite alternate; }
+      .splash__weed--b { animation-duration: 5.6s; animation-delay: -2s; }
+      .splash__body { position: relative; align-self: center; display: grid; justify-items: center; text-align: center; max-width: 560px; margin-top: -4vh; }
+      .splash__pip { width: min(190px, 21vh); height: auto; margin-bottom: min(10px, 1.4vh); opacity: 0; }
+      .splash__pip-fish { animation: splash-bob 2.6s ease-in-out infinite; transform-box: fill-box; }
+      .splash__h { margin: 0; display: grid; justify-items: center; font-family: "Unbounded", "Lexend", system-ui, sans-serif; font-weight: 700; line-height: 1.02; letter-spacing: -0.01em; color: #123247; }
+      .splash__line { display: block; font-size: clamp(26px, min(10.5vw, 6.6vh), 58px); opacity: 0; }
+      .splash__quiz { display: block; margin: min(8px, 1vh) 0 min(10px, 1.3vh); padding: 0.06em 0.34em 0.12em; border-radius: 0.3em; font-size: clamp(40px, min(16vw, 10.4vh), 92px);
+        color: #fff; background: #ec5f35; box-shadow: 0 12px 26px rgba(214, 78, 38, 0.32), inset 0 -0.06em 0 rgba(150, 40, 10, 0.18); transform: rotate(-4deg); opacity: 0; }
+      .splash__tag { margin: min(18px, 2.4vh) 0 0; max-width: 21em; font-size: clamp(15px, 4.2vw, 18px); line-height: 1.45; font-weight: 500; color: #24485c; text-wrap: balance; opacity: 0; }
+      .splash__tag b { color: #123247; font-weight: 600; }
+      #loader.is-in .splash__pip { animation: splash-pop 700ms cubic-bezier(0.2, 0.9, 0.3, 1.25) both; }
+      #loader.is-in .splash__line { animation: splash-rise 600ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+      #loader.is-in .splash__line:last-child { animation-delay: 240ms; }
+      #loader.is-in .splash__line:first-child { animation-delay: 80ms; }
+      #loader.is-in .splash__quiz { animation: splash-stamp 640ms cubic-bezier(0.25, 1.1, 0.35, 1.3) 160ms both; }
+      #loader.is-in .splash__tag { animation: splash-rise 600ms cubic-bezier(0.2, 0.8, 0.2, 1) 380ms both; }
+      #loader.is-leaving .splash__body, #loader.is-leaving .splash__load { opacity: 0; transform: scale(1.06); transition: opacity 280ms ease, transform 500ms ease; }
+      .splash__load { position: relative; display: grid; justify-items: center; gap: 8px; transition: opacity 300ms ease; }
+      #loader.is-ready .splash__load { opacity: 0; }
+      #loader .bar { width: min(220px, 60vw); height: 8px; border-radius: 99px; background: rgba(255, 255, 255, 0.45); box-shadow: inset 0 0 0 1px rgba(18, 50, 71, 0.08); overflow: hidden; }
+      #loader .bar__fill { height: 100%; width: 0%; background: #ec5f35; border-radius: inherit; transition: width 0.25s ease; }
+      #loader .loader__label { margin: 0; font-size: 13px; font-weight: 500; color: #123247; font-variant-numeric: tabular-nums; }
+      #loader .loader__error { position: relative; max-width: 300px; margin: 10px auto 0; text-align: center; color: #8a1f2b; font-size: 15px; line-height: 1.4; }
+      @keyframes splash-ray { from { opacity: 0.55; } to { opacity: 1; } }
+      @keyframes splash-bubble { from { transform: translate(0, 0); opacity: 0; } 8% { opacity: 1; } 50% { transform: translate(10px, -55vh); } to { transform: translate(-6px, -112vh); opacity: 0.7; } }
+      @keyframes splash-sway { from { transform: rotate(-5deg); } to { transform: rotate(5deg); } }
+      @keyframes splash-bob { 0%, 100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-5px) rotate(2deg); } }
+      @keyframes splash-pop { from { opacity: 0; transform: translateY(14px) scale(0.7); } to { opacity: 1; transform: none; } }
+      @keyframes splash-rise { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+      @keyframes splash-stamp { from { opacity: 0; transform: rotate(-14deg) scale(0.4); } to { opacity: 1; transform: rotate(-4deg) scale(1); } }
+      @media (prefers-reduced-motion: reduce) {
+        .splash__ray, .splash__bubble, .splash__weed, .splash__pip-fish { animation: none !important; }
+        .splash__bubble { display: none; }
+        #loader.is-in .splash__pip, #loader.is-in .splash__line, #loader.is-in .splash__quiz, #loader.is-in .splash__tag { animation: splash-fade 400ms ease both; }
+        #loader.is-in .splash__quiz { transform: rotate(-4deg); }
+        #loader.is-leaving .splash__body { transform: none; }
+      }
+      @keyframes splash-fade { from { opacity: 0; } to { opacity: 1; } }
     </style>
   </head>
   <body>
     <div id="app">
       <canvas id="scene" aria-hidden="true"></canvas>
 
-      <!-- Loading -->
-      <div id="loader" role="status" aria-live="polite">
-        <svg viewBox="0 0 72 48" aria-hidden="true">
-          <path d="M8 24c10-16 32-18 44-6l12-10-3 16 3 16-12-10C40 42 18 40 8 24z" fill="#ff8a5c" />
-          <circle cx="22" cy="21" r="5" fill="#fff" /><circle cx="23" cy="21" r="2.8" fill="#1a1030" />
-          <circle cx="30" cy="30" r="1.6" fill="#7ff5ff" /><circle cx="36" cy="31" r="1.6" fill="#7ff5ff" /><circle cx="42" cy="30" r="1.6" fill="#7ff5ff" />
-        </svg>
-        <h1 class="loader__title">Pip</h1>
-        <p class="loader__sub">The Long Swim Home</p>
-        <div class="bar" aria-hidden="true"><div class="bar__fill" id="loader-fill"></div></div>
-        <p class="loader__label"><span id="loader-step">Loading…</span> <span id="loader-pct">0%</span></p>
+      <!-- Splash: says what this is (a deep-sea quiz adventure) while the ocean loads -->
+      <div id="loader" class="splash" role="status" aria-live="polite">
+        <div class="splash__sea" aria-hidden="true">
+          <span class="splash__ray" style="--x:14%;--w:16vw;--r:14deg;--t:-0s"></span><span class="splash__ray" style="--x:44%;--w:12vw;--r:4deg;--t:-2s"></span><span class="splash__ray" style="--x:68%;--w:18vw;--r:-10deg;--t:-4s"></span>
+          <span class="splash__bubble" style="--x:8%;--s:10px;--d:9s;--t:-2s"></span><span class="splash__bubble" style="--x:18%;--s:6px;--d:7s;--t:-5s"></span><span class="splash__bubble" style="--x:27%;--s:14px;--d:11s;--t:-1s"></span><span class="splash__bubble" style="--x:71%;--s:8px;--d:8s;--t:-3s"></span><span class="splash__bubble" style="--x:80%;--s:16px;--d:12s;--t:-7s"></span><span class="splash__bubble" style="--x:88%;--s:6px;--d:7.5s;--t:-1s"></span><span class="splash__bubble" style="--x:62%;--s:9px;--d:10s;--t:-6s"></span><span class="splash__bubble" style="--x:40%;--s:7px;--d:9.5s;--t:-8s"></span>
+          <svg class="splash__reef splash__reef--l" viewBox="0 0 200 200">
+            <path d="M-10 200V150C-6 118 26 100 56 112C74 88 118 92 128 124C140 116 162 124 168 146C173 162 175 180 176 200Z" fill="#4aaec6"/>
+            <path class="splash__weed" d="M86 188C76 160 98 146 86 120C76 98 92 82 86 62" stroke="#2c9c7c" stroke-width="7" stroke-linecap="round" fill="none"/>
+            <path class="splash__weed splash__weed--b" d="M114 188C122 170 108 160 116 142C122 128 114 118 118 106" stroke="#3fb48f" stroke-width="5" stroke-linecap="round" fill="none"/>
+            <path d="M-6 200C-2 176 22 162 46 168C62 152 96 156 102 180L104 200Z" fill="#2a86a1"/>
+          </svg>
+          <svg class="splash__reef splash__reef--r" viewBox="0 0 200 200">
+            <path d="M26 200C27 180 30 164 34 152C36 120 70 102 100 114C118 90 166 94 180 126C192 122 210 138 210 160V200Z" fill="#4aaec6"/>
+            <path class="splash__weed splash__weed--b" d="M120 188C130 162 110 148 122 126C132 108 118 94 126 76" stroke="#34a986" stroke-width="6" stroke-linecap="round" fill="none"/>
+            <path class="splash__weed" d="M84 188C76 170 90 158 82 140C76 126 84 114 80 102" stroke="#2c9c7c" stroke-width="5" stroke-linecap="round" fill="none"/>
+            <path d="M98 200C102 178 126 166 148 172C162 158 198 162 210 186V200Z" fill="#2a86a1"/>
+          </svg>
+          <svg class="splash__sand" viewBox="0 0 400 40" preserveAspectRatio="none"><path d="M0 14C70 2 128 10 204 6S336 0 400 10V40H0Z" fill="#f3ddae"/></svg>
+        </div>
+        <div class="splash__body">
+          <svg class="splash__pip" viewBox="0 0 150 96" aria-hidden="true">
+            <g class="splash__pip-fish"><g transform="translate(102 36) scale(-3.2 3.2)"><path d="M3 10C7 4 16 3 22 7l5-4-1.5 7 1.5 7-5-4c-6 4-15 3-19-3z" fill="#ff8a5c"/><path d="M6 8.2C9 5.5 14 4.8 18.5 6.4" stroke="#ffd2bd" stroke-width="1.4" stroke-linecap="round" fill="none"/><circle cx="12" cy="12.6" r=".75" fill="#7ff5ff"/><circle cx="14.8" cy="13" r=".75" fill="#7ff5ff"/><circle cx="17.6" cy="12.6" r=".75" fill="#7ff5ff"/><circle cx="8.6" cy="9.4" r="2.8" fill="#fff"/><circle cx="7.9" cy="8.8" r="1.5" fill="#10202c"/></g></g>
+            <circle cx="108" cy="44" r="3.2" fill="#fff"/><circle cx="117" cy="33" r="4.6" fill="#fff"/>
+            <circle cx="132" cy="17" r="15" fill="#fff"/>
+            <text x="132" y="24" text-anchor="middle" font-family="Unbounded, sans-serif" font-weight="700" font-size="20" fill="#ec5f35">?</text>
+          </svg>
+          <h1 class="splash__h"><span class="splash__line">Deep-Sea</span> <span class="splash__quiz">Quiz</span> <span class="splash__line">Adventure</span></h1>
+          <p class="splash__tag">Answer questions to help <b>Pip</b>, a little lost fish, swim all the way home.</p>
+        </div>
+        <div class="splash__load">
+          <div class="bar" aria-hidden="true"><div class="bar__fill" id="loader-fill"></div></div>
+          <p class="loader__label"><span id="loader-step">Loading…</span> <span id="loader-pct">0%</span></p>
+        </div>
       </div>
 
       <div id="ui">
@@ -102,7 +171,7 @@
         <!-- Title -->
         <section id="title" class="screen screen--title" hidden aria-labelledby="title-h">
           <div class="title__top">
-            <p class="title__kicker">A deep-sea quiz adventure</p>
+            <p class="title__kicker"><span class="title__q" aria-hidden="true">?</span>A deep-sea quiz adventure</p>
             <h1 class="title__h" id="title-h">Pip</h1>
             <p class="title__sub">The Long Swim Home</p>
           </div>

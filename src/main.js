@@ -1,4 +1,4 @@
-// Boot: shows real loading progress while the engine downloads and the scene is built.
+// Boot: shows the splash (with real loading progress) while the engine downloads and the scene is built.
 import '@fontsource/unbounded/500.css';
 import '@fontsource/unbounded/600.css';
 import '@fontsource/unbounded/700.css';
@@ -8,6 +8,7 @@ import '@fontsource/lexend/600.css';
 import './styles.css';
 import { isCancel } from './game/core/scheduler.js';
 
+const splash = document.getElementById('loader');
 const fill = document.getElementById('loader-fill');
 const step = document.getElementById('loader-step');
 const pct = document.getElementById('loader-pct');
@@ -20,12 +21,44 @@ function progress(p, label) {
 }
 
 function fail(message) {
-  const loader = document.getElementById('loader');
   const p = document.createElement('p');
   p.className = 'loader__error';
   p.textContent = message;
-  loader.appendChild(p);
+  splash.querySelector('.splash__load').appendChild(p);
   step.textContent = 'Could not start';
+}
+
+// Splash timing: long enough to read "Deep-Sea Quiz Adventure", never longer than loading needs.
+// Automated test runs skip the wait unless the URL asks for it (?splash).
+const splashStart = performance.now();
+const quickSplash = navigator.webdriver === true && !/[?&]splash\b/.test(location.search);
+const SPLASH_MIN = quickSplash ? 0 : 2800; // ms on screen in total
+const SPLASH_AFTER_READY = quickSplash ? 0 : 900; // ms the finished splash lingers
+
+// The headline animates in once its display font has arrived, so it never flashes a fallback font.
+Promise.race([document.fonts?.load('700 48px Unbounded'), new Promise((r) => setTimeout(r, 1200))])
+  .catch(() => {})
+  .finally(() => splash.classList.add('is-in'));
+
+function leaveSplash() {
+  splash.classList.add('is-ready');
+  const wait = Math.max(SPLASH_AFTER_READY, SPLASH_MIN - (performance.now() - splashStart));
+  return new Promise((resolve) => {
+    const go = () => {
+      clearTimeout(timer);
+      splash.removeEventListener('pointerdown', go);
+      window.removeEventListener('keydown', go);
+      resolve();
+    };
+    const timer = setTimeout(go, wait);
+    // A tap or key press skips the wait once the ocean is ready.
+    splash.addEventListener('pointerdown', go);
+    window.addEventListener('keydown', go);
+  }).then(() => {
+    splash.classList.add('is-leaving');
+    document.getElementById('title')?.classList.add('is-enter');
+    setTimeout(() => (splash.hidden = true), 720);
+  });
 }
 
 // Sequences cancelled by Restart / Quit / Skip reject with Cancelled — that's expected.
@@ -62,10 +95,7 @@ async function boot() {
     return;
   }
   progress(1, 'Ready!');
-  const loader = document.getElementById('loader');
-  loader.style.transition = 'opacity 500ms ease';
-  loader.style.opacity = '0';
-  setTimeout(() => (loader.hidden = true), 520);
+  await leaveSplash();
 }
 
 boot();

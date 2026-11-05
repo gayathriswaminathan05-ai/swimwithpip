@@ -27,7 +27,8 @@ The interface ("Sunlit reef") is bright and playful but its own thing, not a Duo
   wrong) and glossy coral "candy" buttons, with no hard
   ledge shadows
 - a press ring in a deeper shade of whatever you touch
-- illustrated hurdle icons on an amber lantern disc
+- hurdle icons drawn in coral on a white disc with a soft pulsing coral ring, the same palette as
+  the buttons and hearts
 - feedback as a tinted card inside the sheet, not a full-width bar
 
 **Defaults:**
@@ -63,14 +64,18 @@ Loop: **explore → danger appears → question → feedback → escape or setba
 
 | # | Area | Hurdle | Encounter | Correct-answer escape | Third-mistake capture |
 |---|---|---|---|---|---|
-| 1 | Lost Waters | Powerful current | A visible stream of rushing water (flowing lines, carried sand, seaweed and bubbles) runs straight against Pip. Pip swims hard, gains a little, then a gust shoves it back with a tumble, over and over | Pip banks out of the stream into a sheltered channel between boulders | A huge gust slams Pip far back (wrong answer); on capture Pip is swept away back down the stream |
-| 2 | Lost Waters | Abandoned net | A billowing net with floats and weights blocks the passage | Pip squeezes (squash) through a torn opening | The net wraps around Pip and lifts away |
-| 3 | Dangerous Depths | Octopus ambush | An orange-red octopus hides behind a big rock, eyes peeking over it, tentacles draped over and around it | Tentacles coil, then strike where Pip *was*; Pip barrel-rolls around the side of the rock | Tentacles wrap and pull Pip behind the rock |
-| 4 | Dangerous Depths | Falling rocks | Rocks trickle down a canyon; a boulder teeters | Pip dives under a boulder arch while rocks bounce off it | Rocks fall around Pip and seal it in |
-| 5 | Dangerous Depths | Predator chase | An anglerfish-like hunter closes in from behind | Pip bursts into a narrow passage; the predator bonks the rocks | The predator lunges; its jaws snap; darkness |
-| 6 | Dangerous Depths | Hydrothermal vents | Chimneys burst with scalding plumes | Pip times dashes between bursts (high-angle view) | A plume sweeps Pip up and away |
+| 1 | Lost Waters | Powerful current | A visible stream of rushing water (flowing lines, carried sand, seaweed and bubbles) runs straight against Pip. Pip swims hard, gains a little, then a gust shoves it back with a tumble, over and over. Pip is visibly distressed: shivering, scared face, eyes darting about | The current drops into a lull (the stream fades away) and Pip dashes forward | A huge gust slams Pip far back (wrong answer); on capture Pip is swept away back down the stream |
+| 2 | Lost Waters | Abandoned net | A billowing net with floats and weights blocks the passage, completely intact | The net tears open (threads snap, a hole grows) and Pip squeezes (squash) through | The net wraps around Pip and lifts away |
+| 3 | Dangerous Depths | Octopus ambush | An orange-red octopus hides behind a big rock (only the top of its head shows), then creeps out around the rock's side onto the sand, never through it, and reaches for Pip | A burst of bubbles erupts in front of it; startled, it squeezes its eyes shut and snatches its arms in while Pip slips past around the rock | Tentacles wrap and pull Pip behind the rock |
+| 4 | Dangerous Depths | Falling rocks | Rocks crash hard and fast down a canyon. Pip darts about frantically, scared, jerking away from each impact | A boulder arch rises out of the rubble; Pip dives under it while rocks bounce off it | Rocks fall around Pip and seal it in |
+| 5 | Dangerous Depths | Predator chase | An anglerfish-like hunter closes in from behind; the only gap in the rock wall is blocked by a boulder | A quick look at the wall: the boulder tumbles away and light shines through the gap. Pip bursts through; the predator bonks the rocks | The predator lunges; its jaws snap; darkness |
+| 6 | Dangerous Depths | Hydrothermal vents | Every chimney roars at once: a wall of scalding plumes | The vents die down into a lull and Pip dashes between them (high-angle view) | A plume sweeps Pip up and away |
 | 7 | Glowing Home | Dark cavern | The route vanishes into a pitch-black cave | Glowing mushrooms light up one by one with chimes; Pip follows them | An undertow pulls Pip into the dark |
 | 8 | Glowing Home | The Final Ambush (two questions) | A big hungry fish rises from behind the rocks to block the way home | Q1: Pip dodges the ambush. Q2: Pip flashes a signal, the school rushes in, and the predator flees | The big fish catches Pip |
+
+**The help only comes with a right answer.** Before it, every hurdle shows the danger with no way
+out (no lull, no hole, no arch, no gap). The escape route appears only as the reward for a
+correct answer, so the answer visibly causes the rescue.
 
 Between hurdles there are calm stretches: a whale glides overhead, story captions appear, area
 banners mark the transitions, and the reef changes as Pip goes deeper. Jellyfish are scenery
@@ -211,6 +216,18 @@ is in `src/data/narration.js` and `design/narration-script.md`.
 
 ## 4. Mobile interface plan (portrait first)
 
+- **Splash screen:** the first thing anyone sees, while the ocean loads. On a sunlit-sea backdrop
+  (soft light rays, rising bubbles, swaying seaweed, rounded rocks on sand) it says what this is
+  in one glance:
+  - Pip with a "?" thought bubble
+  - **Deep-Sea / Quiz / Adventure** stacked in Unbounded, with "Quiz" on a tilted coral sticker
+  - one line: "Answer questions to help Pip, a little lost fish, swim all the way home."
+  - a thin coral loading bar
+
+  It stays at least 2.8 s (a tap skips the wait once loading is done), then fades into the title,
+  whose badge, name and buttons rise in one after another. The title keeps the message as a white
+  "? A deep-sea quiz adventure" badge above "Pip". Splash styles live inline in `index.html` so it
+  paints before the main bundle loads.
 - **Header:** a frosted pill at the top that respects the notch and safe areas. Every hit area is
   at least 44 × 44 px. It holds:
   - pause and sound buttons
@@ -219,14 +236,14 @@ is in `src/data/narration.js` and `design/narration-script.md`.
   - the area name and "N of 8" underneath
   - three hearts; a lost life becomes an empty outline
 - **Hurdle panel (top):** a warm sand frosted card under the header, with:
-  - an illustration of that hurdle on a gently pulsing amber disc (current, net, octopus, rocks,
-    predator, vents, cavern, ambush)
+  - an icon for that hurdle (current, net, octopus, rocks, predator, vents, cavern, ambush),
+    drawn in coral on a white disc with a soft pulsing coral ring
   - "Hurdle 3 of 8", the hurdle name, one sentence on the danger and, in bold, what a right answer
     does ("Answer to slip past.")
 
   It slides in and out with the question, so the danger and the quiz never share a card.
 - **Question sheet (bottom, minimal):** a frosted white sheet within thumb reach. It holds only:
-  - a quiet topic label (coloured dot) with a small "Skip (test)" link on the same row
+  - a small "Skip (test)" link (no topic labels)
   - the question
   - a 2 × 2 grid of white answer cards, each at least 60 px tall
 
@@ -240,7 +257,7 @@ is in `src/data/narration.js` and `design/narration-script.md`.
   - Correct: the chosen card turns sea-green with a ✓ and praise shows ("Nice!", "Great job!"…),
     then the sheet slides away and the explanation appears in a green toast.
   - Wrong: the chosen card turns rose with a ✗, the correct card turns sea-green with a ✓, and a
-    rose card appears inside the sheet with the explanation and **Try another question**. Feedback always uses icons
+    short "Not quite" note appears inside the sheet with the explanation and **Next question**. Feedback always uses icons
     and text, never colour alone.
 - **Game Over and completion:** frosted cards and a glossy coral primary
   button.
