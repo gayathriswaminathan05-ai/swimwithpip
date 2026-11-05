@@ -66,8 +66,8 @@
 <script>
   const LAYOUTS = {
     cover: {
-      head: '<p class="kicker">A 3D UNDERWATER QUIZ ADVENTURE</p><div class="h logo">Pip</div><p class="logo-sub">The Long Swim Home</p>',
-      phones: ['03-current', '06-octopus', '15-reunion'],
+      head: '<p class="kicker">A DEEP-SEA QUIZ ADVENTURE</p><div class="h logo">Pip</div><p class="logo-sub">The Long Swim Home</p>',
+      phones: ['00-splash', '06-octopus', '19-escape'],
       top: 70,
     },
     story: {
@@ -76,8 +76,9 @@
     },
     blank: { head: '', custom: () => '' },
     hurdles: {
-      head: '<p class="kicker">EIGHT HURDLES, THREE LIVES</p><h1 class="h">Answer to escape</h1><p class="sub">Falling rocks, a dark cavern, a final ambush and more. Pip never steers: a right answer is how it gets past.</p>',
-      phones: ['09-rocks-question', '13-cavern', '14-ambush'],
+      head: '<p class="kicker">EIGHT HURDLES, THREE LIVES</p><h1 class="h">Help arrives with the right answer</h1><p class="sub">Pip never steers. The old net stays whole until you answer, then it tears open; a boulder blocks the predator’s gap until a right answer knocks it free.</p>',
+      phones: ['09-net-question', '10-net-torn', '11-predator-gap'],
+      labels: ['The danger', 'Right answer', 'Another hurdle'],
     },
     interface: {
       head: '<p class="kicker">INTERFACE</p><h1 class="h">The danger on top, a calm quiz below</h1><p class="sub">A press ring on every tap. A right answer glows; a wrong one costs a heart and shows one short explanation.</p>',
@@ -85,13 +86,13 @@
       labels: ['Tap', 'Right', 'Wrong'],
     },
     ending: {
-      head: '<p class="kicker">START TO FINISH</p><h1 class="h">From the reef to the glowing home</h1><p class="sub">Three areas, eight hurdles, one reunion. Built with Three.js, mobile-first, playable on phone and desktop.</p>',
-      phones: ['01-title', '15-reunion', '16-congrats'],
+      head: '<p class="kicker">THE FINAL HURDLE</p><h1 class="h">Family to the rescue</h1><p class="sub">Pip flashes its light, far-off lights flash back, and its family swarms the big fish and chases it away. Then, home at last.</p>',
+      phones: ['14-ambush', '19-escape', '15-reunion'],
     },
     responsive: {
       head: '<p class="kicker">ANY SCREEN</p><h1 class="h">Portrait, landscape and desktop</h1>',
       custom: () => `
-        <div class="browser"><div class="bar"><i></i><i></i><i></i><span>Pip: The Long Swim Home</span></div><img src="raw/17-desktop.png" alt="" /></div>
+        <div class="browser"><div class="bar"><i></i><i></i><i></i><span>swimwithpip.pages.dev</span></div><img src="raw/17-desktop.png" alt="" /></div>
         <div class="land"><img src="raw/18-landscape.png" alt="" /></div>`,
     },
   };

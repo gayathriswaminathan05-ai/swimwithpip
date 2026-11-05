@@ -1,50 +1,58 @@
 # Sharing Pip on Muzli
 
-## How Muzli submissions work
+## How Muzli works (checked November 2026)
 
-Muzli takes work through **Muzli Me**, its creative profile, and **Muzli Picks**, its curated new-tab
-feed:
+Muzli has two layers, and only the second is chosen by Muzli:
 
-1. Create or sign in to your profile at https://me.muz.li/join.
-2. Add the project to your profile. Muzli Me lets you either upload media from your computer or paste
-   a link from a creative platform.
-3. Nominate it for the feed at https://me.muz.li/nominate. In Muzli's words: "Sign in to nominate one
-   of your projects for editorial review to be featured in the Muzli new tab."
+1. **Your project page on Muzli Me (you publish it).** Sign in at https://me.muz.li, then add the
+   project at https://me.muz.li/upload by pasting the live link. Sites that allow embedding show
+   up as the live, playable page instead of a screenshot (swimwithpip.pages.dev allows it). Muzli
+   asks you to "tell us how you made it in the description". Once published, the page is public
+   on your profile.
+2. **Muzli Picks in the Muzli new tab (editors choose).** Nominate the project at
+   https://me.muz.li/nominate. Each nomination goes to Muzli's curation queue; editors decide
+   whether it becomes a Muzli Pick. Muzli says it usually reviews within 24 hours. Free accounts
+   get **one** nomination; PRO accounts get three a month. In Muzli's words, the tool used does not
+   matter: "We do not care which tool wrote the code."
 
-Muzli does not publish exact image sizes. The images here use 4:3 at 1600 × 1200, the usual size for
-design showcase sites, with 2× versions for sharp displays. There is also a short GIF, which
-Muzli's tips recommend for making work feel more dynamic.
+Muzli does not publish required image sizes or formats. The images here use 4:3 at 1600 × 1200
+(2× versions at 3200 × 2400), plus a short GIF.
 
 ## Files
 
 | File | Use |
 | --- | --- |
-| `01-cover.jpg` (and `01-cover@2x.png`) | Cover / thumbnail |
-| `02-story.jpg` | The story: coins, the current, lost |
-| `03-hurdles.jpg` | Falling rocks, dark cavern, final ambush |
+| `01-cover.jpg` | Cover / thumbnail: the "Deep-Sea Quiz Adventure" splash, the octopus, the family to the rescue |
+| `02-story.jpg` | The story: gold coins, the current, lost |
+| `03-hurdles.jpg` | Help arrives with the right answer: the net before and after, the predator's gap |
 | `04-interface.jpg` | Press ring, right answer, wrong answer |
-| `05-ending.jpg` | Title, reunion, congratulations |
+| `05-ending.jpg` | The final hurdle: ambush, family swarms the big fish, reunion |
 | `06-responsive.jpg` | Desktop browser and landscape phone |
-| `07-gameplay.gif` | 11-second loop of a hurdle, from tap to escape (640 × 480, 1.4 MB) |
+| `07-gameplay.gif` | 12-second loop of the octopus hurdle, from emergence to escape (640 × 480, 1.2 MB) |
 
-The `@2x.png` versions (3200 × 2400) are for when a site accepts large uploads; the `.jpg` files are
-lighter. `raw/` holds the original phone screenshots. Re-render the composites with `compose.html`
-(`?layout=cover|story|hurdles|interface|ending|responsive`) served by the dev server.
+The `@2x.png` versions are for sites that accept large uploads. `raw/` holds the original phone
+screenshots. Re-render the composites with `compose.html` (`?layout=cover|story|hurdles|interface|ending|responsive`)
+served by the dev server.
 
 ## Suggested text
 
-**Title:** Pip: The Long Swim Home — a 3D underwater quiz game
+**Link:** https://swimwithpip.pages.dev
 
-**Short description:** A mobile-first Three.js game where every right answer helps a lost lanternfish
-escape a hurdle on its way home. Eight hurdles, three lives, no timer.
+**Title:** Pip: The Long Swim Home, a deep-sea quiz adventure
 
-**Longer description:** Pip, a little lanternfish, wanders off to look at gold coins and gets swept away
-from its family by an ocean current. Players never steer. Each hurdle (a current, a ghost net, an
-octopus, falling rocks, a predator, hot vents, a dark cavern and a final ambush) is beaten by
-answering a short general-knowledge question that works for players anywhere. The interface keeps
-the danger in a panel at the top and a calm quiz at the bottom, with a press ring on every tap.
-Built with Three.js, with procedural animation and sound.
+**Short description:** A mobile-first 3D quiz game where every right answer helps a lost lanternfish
+past a danger on its way home. Eight hurdles, three lives, no timer.
 
-**Tags:** Three.js, WebGL, game design, educational game, quiz, mobile UI, interaction design, 3D
+**Longer description (how it was made):** Pip, a little lanternfish, wanders off to look at gold
+coins and is swept away from its family by an ocean current. Players never steer: each hurdle (a
+current, an old fishing net, an octopus, falling rocks, a predator, hot vents, a dark cavern and a
+final ambush) shows the danger first, and the way out appears only when you answer a short
+general-knowledge question correctly. The net tears open, a boulder tumbles out of a gap, and in
+the finale Pip's family swarms the big fish and chases it away.
 
-**Credit to include:** Coral models from the "Coral Reef Kit" by MiniPoly (Poly Pizza), CC BY 3.0 / CC0.
+Everything is made in code with Three.js: Pip, its family, every creature, the coral reef,
+particles and the synthesised sound effects. The opening story is narrated with an AI voice. I
+designed and directed it and built it with Claude Code (Anthropic), iterating on the art, motion
+and interface through many rounds of playtesting.
+
+**Tags:** Three.js, WebGL, game design, educational game, quiz, mobile UI, interaction design, 3D, AI-assisted
