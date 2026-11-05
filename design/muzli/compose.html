@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Pip — showcase images</title>
+<link rel="icon" href="data:," />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600&family=Unbounded:wght@500;600;700&display=swap" />
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  /* One 1600 × 1200 (4:3) canvas per image. */
+  .canvas {
+    position: relative;
+    width: 1600px;
+    height: 1200px;
+    overflow: hidden;
+    font-family: Lexend, sans-serif;
+    color: #fff;
+    background:
+      radial-gradient(70% 55% at 50% -8%, rgba(150, 236, 255, 0.55), rgba(150, 236, 255, 0) 70%),
+      radial-gradient(60% 50% at 85% 110%, rgba(255, 138, 92, 0.28), rgba(255, 138, 92, 0) 70%),
+      linear-gradient(170deg, #1a7d9e 0%, #0f5679 45%, #0a3550 100%);
+  }
+  /* Soft light shafts and a few bubbles, like the game's water. */
+  .canvas::before {
+    content: "";
+    position: absolute;
+    inset: -20% -10% 0;
+    background: repeating-linear-gradient(105deg, rgba(255, 255, 255, 0.07) 0 60px, rgba(255, 255, 255, 0) 60px 190px);
+    mask-image: linear-gradient(180deg, #000 0%, rgba(0, 0, 0, 0) 70%);
+  }
+  .bubble { position: absolute; border-radius: 50%; border: 2px solid rgba(220, 250, 255, 0.35); background: radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.35), rgba(255, 255, 255, 0) 45%); }
+  .head { position: absolute; left: 0; right: 0; top: 70px; text-align: center; }
+  .kicker { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.12em; color: #c9f5ff; }
+  .h { margin: 10px 0 0; font-family: Unbounded, sans-serif; font-weight: 700; font-size: 58px; line-height: 1.1; text-shadow: 0 4px 24px rgba(0, 20, 40, 0.35); }
+  .sub { margin: 14px auto 0; max-width: 1100px; font-size: 25px; line-height: 1.45; font-weight: 400; color: rgba(235, 250, 255, 0.9); }
+  .logo { font-size: 128px; line-height: 1; margin-top: 4px; text-shadow: 0 0 40px rgba(255, 138, 92, 0.75), 0 6px 26px rgba(0, 0, 0, 0.3); }
+  .logo-sub { margin: 10px 0 0; font-family: Unbounded, sans-serif; font-weight: 500; font-size: 34px; }
+  .phones { position: absolute; left: 0; right: 0; bottom: 40px; display: flex; justify-content: center; align-items: flex-end; gap: 56px; }
+  .phone {
+    position: relative;
+    width: 350px;
+    height: 758px;
+    padding: 12px;
+    border-radius: 58px;
+    background: linear-gradient(160deg, #24394a, #0b1822);
+    box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.12), 0 40px 80px rgba(0, 12, 24, 0.5), 0 10px 24px rgba(0, 12, 24, 0.35);
+  }
+  .phone img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: top; border-radius: 47px; }
+  .phone.mid { transform: translateY(-20px); }
+  .label { position: absolute; z-index: 1; left: 50%; top: -20px; transform: translateX(-50%); white-space: nowrap; padding: 8px 18px; border-radius: 999px; font-size: 20px; font-weight: 600; color: #0f3348; background: rgba(255, 255, 255, 0.9); box-shadow: 0 8px 20px rgba(0, 20, 40, 0.25); }
+  /* Responsive layout: desktop browser window + landscape phone. */
+  .browser { position: absolute; left: 110px; top: 330px; width: 1180px; border-radius: 22px; overflow: hidden; background: #0b1822; box-shadow: 0 40px 90px rgba(0, 12, 24, 0.55); }
+  .browser .bar { height: 44px; display: flex; align-items: center; gap: 9px; padding: 0 18px; background: #e9f3f8; }
+  .browser .bar i { width: 13px; height: 13px; border-radius: 50%; background: #ff6b5f; }
+  .browser .bar i:nth-child(2) { background: #ffbd2e; }
+  .browser .bar i:nth-child(3) { background: #28c840; }
+  .browser .bar span { margin-left: 18px; flex: 1; height: 26px; border-radius: 8px; background: #fff; color: #46677a; font-size: 14px; display: flex; align-items: center; padding: 0 12px; }
+  .browser img { display: block; width: 100%; }
+  .land { position: absolute; right: 90px; bottom: 70px; width: 640px; height: 296px; padding: 11px; border-radius: 48px; background: linear-gradient(160deg, #24394a, #0b1822); box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.12), 0 40px 80px rgba(0, 12, 24, 0.55); }
+  .land img { display: block; width: 100%; height: 100%; object-fit: cover; border-radius: 38px; }
+</style>
+</head>
+<body>
+<div class="canvas" id="c"></div>
+<script>
+  const LAYOUTS = {
+    cover: {
+      head: '<p class="kicker">A 3D UNDERWATER QUIZ ADVENTURE</p><div class="h logo">Pip</div><p class="logo-sub">The Long Swim Home</p>',
+      phones: ['03-current', '06-octopus', '15-reunion'],
+      top: 70,
+    },
+    story: {
+      head: '<p class="kicker">THE STORY</p><h1 class="h">Swept away from home</h1><p class="sub">Pip wanders off to look at gold coins on the sea floor, a powerful current carries it far from its family, and now it is lost.</p>',
+      phones: ['02-coins', '04-swept', '05-lost'],
+    },
+    blank: { head: '', custom: () => '' },
+    hurdles: {
+      head: '<p class="kicker">EIGHT HURDLES, THREE LIVES</p><h1 class="h">Answer to escape</h1><p class="sub">Falling rocks, a dark cavern, a final ambush and more. Pip never steers: a right answer is how it gets past.</p>',
+      phones: ['09-rocks-question', '13-cavern', '14-ambush'],
+    },
+    interface: {
+      head: '<p class="kicker">INTERFACE</p><h1 class="h">The danger on top, a calm quiz below</h1><p class="sub">A press ring on every tap. A right answer glows; a wrong one costs a heart and shows one short explanation.</p>',
+      phones: ['07-press', '08-correct', '12-wrong'],
+      labels: ['Tap', 'Right', 'Wrong'],
+    },
+    ending: {
+      head: '<p class="kicker">START TO FINISH</p><h1 class="h">From the reef to the glowing home</h1><p class="sub">Three areas, eight hurdles, one reunion. Built with Three.js, mobile-first, playable on phone and desktop.</p>',
+      phones: ['01-title', '15-reunion', '16-congrats'],
+    },
+    responsive: {
+      head: '<p class="kicker">ANY SCREEN</p><h1 class="h">Portrait, landscape and desktop</h1>',
+      custom: () => `
+        <div class="browser"><div class="bar"><i></i><i></i><i></i><span>Pip: The Long Swim Home</span></div><img src="raw/17-desktop.png" alt="" /></div>
+        <div class="land"><img src="raw/18-landscape.png" alt="" /></div>`,
+    },
+  };
+  const name = new URLSearchParams(location.search).get('layout') || 'cover';
+  const L = LAYOUTS[name];
+  const c = document.getElementById('c');
+  const bubbles = [[90, 220, 26], [1480, 180, 18], [1520, 420, 34], [60, 640, 20], [1400, 760, 14], [210, 980, 30], [1330, 1040, 22]];
+  c.innerHTML =
+    bubbles.map(([x, y, r]) => `<span class="bubble" style="left:${x}px;top:${y}px;width:${r}px;height:${r}px"></span>`).join('') +
+    `<div class="head" style="top:${L.top ?? 70}px">${L.head}</div>` +
+    (L.custom
+      ? L.custom()
+      : `<div class="phones">${L.phones
+          .map((p, i) => `<div class="phone${i === 1 ? ' mid' : ''}">${L.labels ? `<span class="label">${L.labels[i]}</span>` : ''}<img src="raw/${p}.png" alt="" /></div>`)
+          .join('')}</div>`);
+</script>
+</body>
+</html>
