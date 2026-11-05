@@ -160,6 +160,7 @@ export class UI {
     const sound = $('set-sound');
     sound.addEventListener('click', () => this.h.onToggleSound());
     $('set-skip').addEventListener('click', () => this.h.onToggleSkip?.());
+    $('set-narrator').addEventListener('click', () => this.h.onToggleNarrator?.());
     $('set-quality').addEventListener('change', (ev) => this.h.onQuality(ev.target.value));
     $('set-motion').addEventListener('change', (ev) => this.h.onMotion(ev.target.value));
     document.querySelectorAll('input[name="difficulty"]').forEach((r) => r.addEventListener('change', () => this.h.onDifficulty?.(this.getDifficulty())));
@@ -218,7 +219,9 @@ export class UI {
     this.settingsReturn = null;
   }
 
-  syncSettings({ muted, quality, motion, qualityNote, showSkip = true }) {
+  syncSettings({ muted, quality, motion, qualityNote, showSkip = true, narrator = true, narratorAvailable = true }) {
+    $('set-narrator').setAttribute('aria-checked', String(narrator));
+    $('row-narrator').hidden = !narratorAvailable;
     const s = $('set-sound');
     s.setAttribute('aria-checked', String(!muted));
     $('set-skip').setAttribute('aria-checked', String(showSkip));

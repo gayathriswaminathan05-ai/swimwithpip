@@ -115,7 +115,12 @@ synchronise, and they swim home together to a glowing reef. The completion card 
 **Characters**
 
 - **Pip:** a warm orange lanternfish with big glossy eyes (lids blink and form expressions),
-  blush, a small smile and a row of glowing photophores. No antenna.
+  blush, a small smile and a row of glowing photophores. No antenna. The body is a single smooth
+  loft:
+  - a rounded nose, the widest point just behind the eyes, then an even taper into a slim tail
+    stalk, with no seams or creases
+  - every fin (dorsal, forked tail, anal and pectorals) grows out of the body: thick at the root,
+    thinning to a soft edge
 - **Pip's family:** the same design. They swim as a tidy, staggered school, all facing the same
   way.
 - **Octopus:** orange-red with lighter mottling and small spots, a big rounded head tilted back,
@@ -167,6 +172,19 @@ same way with the flow. The intro's current is a bigger, bolder version: it visi
 behind a churning front, kicks up billowing sand along the floor and leaves the water murky. It
 fades out close to the camera, so it never washes over the view. No hard geometric primitives are
 used for effects.
+
+**Narration**
+
+The opening story is read aloud in a calm, documentary-style voice, in sync with the captions:
+- It uses the device's own speech synthesis, so there are no audio files, nothing to download,
+  and it works offline. It picks the best English narrator voice available (natural or enhanced
+  voices first, British male preferred), slowed slightly and pitched a touch lower.
+- The intro waits at natural pauses for the narrator to finish a line, so captions and voice
+  never drift apart.
+- Skip intro stops the voice, pause pauses it, and mute silences it. Settings has a "Narrator
+  reads the story" switch. Automated test runs stay silent.
+- Voices differ by device. A recorded or studio-generated narration track would sound the same
+  everywhere; that is an optional upgrade.
 
 ## 4. Mobile interface plan (portrait first)
 

@@ -250,7 +250,7 @@ button, select { font: inherit; }
   filter: drop-shadow(0 1px 1.5px rgba(150, 50, 20, 0.35));
   transition: left 400ms var(--ease-out);
 }
-.track__fish svg { width: 100%; height: 100%; display: block; }
+.track__fish svg { width: 100%; height: 100%; display: block; transform: scaleX(-1); } /* face home */
 
 /* ---------- Hurdle panel (top): warm sand, apart from the quiz ---------- */
 .hurdle {
@@ -608,25 +608,16 @@ button, select { font: inherit; }
 .win__pip svg { width: 100%; height: 100%; display: block; filter: drop-shadow(0 4px 6px rgba(248, 106, 69, 0.35)); }
 @keyframes win-swim { 0%, 100% { transform: translate(-6px, 0) rotate(-3deg); } 50% { transform: translate(6px, -4px) rotate(3deg); } }
 
-.rules__hearts { display: flex; justify-content: center; gap: 10px; }
-.rules__hearts .life { width: 40px; height: 36px; }
-.rules__list { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; text-align: left; font-size: 15px; line-height: 1.4; color: var(--ink-soft); }
-.rules__list li { padding: 10px 12px 10px 38px; position: relative; border-radius: 16px; background: #e6f4ff; }
-.rules__list li:nth-child(2) { background: #ffece2; }
-.rules__list li:nth-child(3) { background: #f0ebff; }
-.rules__list li::before {
-  content: "";
-  position: absolute;
-  left: 14px;
-  top: 50%;
-  width: 10px;
-  height: 10px;
-  margin-top: -5px;
-  border-radius: 50%;
-  background: #2b8fd9;
-}
-.rules__list li:nth-child(2)::before { background: #e8673d; }
-.rules__list li:nth-child(3)::before { background: #7a5ce0; }
+.card--rules { gap: 10px; padding: 20px 22px 22px; }
+.rules__map { display: block; width: 100%; max-width: 340px; height: auto; justify-self: center; margin: 0 0 -2px; }
+.rules__pip { animation: pip-bob 2.4s ease-in-out infinite; transform-box: fill-box; }
+@keyframes pip-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+.rules__cap { margin: -4px 0 4px; font-size: 13px; font-weight: 600; color: #b06d12; }
+.card--rules .card__h { font-size: 24px; text-wrap: balance; }
+.card--rules .card__lead { font-size: 15.5px; }
+.rules__lives { margin: 2px 0 6px; display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 6px 10px; font-size: 14.5px; font-weight: 500; color: var(--ink-soft); }
+.rules__hearts { display: inline-flex; gap: 3px; }
+.rules__hearts .life { width: 20px; height: 18px; }
 
 /* Title */
 .screen--title {
@@ -741,7 +732,8 @@ button, select { font: inherit; }
   .title__bottom { grid-row: 1 / span 2; align-self: center; }
   .card { padding: 16px; gap: 8px; }
   .card__h { font-size: 19px; }
-  .rules__list { display: none; }
+  .rules__map { max-width: 250px; }
+  .rules__cap { display: none; }
   .caption { bottom: calc(var(--safe-b) + 6%); }
 }
 

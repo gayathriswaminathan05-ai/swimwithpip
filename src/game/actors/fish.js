@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { paint, paintVerts, merge, finGeometry, warp, mix } from '../gfx/geometry.js';
+import { paint, paintVerts, merge, mix } from '../gfx/geometry.js';
 import { litMaterial, makeSwimUniforms, GlowPoints } from '../gfx/materials.js';
 import { clamp, damp, lerp, TAU } from '../core/util.js';
 
@@ -17,25 +17,147 @@ export const PIP_COLORS = {
   cheek: 0xff8fa6,
 };
 
-const BODY_RX = 0.62;
-const BODY_RY = 0.74;
-const BODY_RZ = 1.1;
+// ---------------------------------------------------------------------------
+// Body shape: one smooth loft from the rounded nose (+Z) to a slim tail stalk (-Z), with no
+// seams or creases. Fins grow out of this surface as lens-shaped blades.
+const Z_NOSE = 1.12;
+const BODY_LEN = 2.74; // nose → tail stalk
+const S_END = 1.05; // the stalk ends in a small rounded cap hidden inside the tail fin
+const H_MAX = 0.74; // half-height at the widest point
+const S_PEAK = 0.41; // widest point, as a fraction of the length
+const STALK = 0.17; // tail-stalk half-height as a fraction of H_MAX
 
-function bodyTaper(z) {
-  return z < 0 ? Math.max(0.2, 1 + z * 0.43) : 1 - z * 0.06;
+const smooth01 = (x) => {
+  const k = clamp(x, 0, 1);
+  return k * k * (3 - 2 * k);
+};
+const stationOf = (z) => (Z_NOSE - z) / BODY_LEN;
+
+/** Half-height at station s (0 = nose, 1 = tail stalk): round nose, even taper, slim stalk. */
+function halfH(s) {
+  if (s <= 0) return 0;
+  if (s < S_PEAK) {
+    const a = (s - S_PEAK) / S_PEAK;
+    return H_MAX * Math.sqrt(Math.max(0, 1 - a * a));
+  }
+  if (s <= 1) {
+    const c = Math.cos(((s - S_PEAK) / (1 - S_PEAK)) * (Math.PI / 2));
+    return H_MAX * (STALK + (1 - STALK) * c * c);
+  }
+  const a = (s - 1) / (S_END - 1);
+  return H_MAX * STALK * Math.sqrt(Math.max(0, 1 - a * a));
 }
+/** Width-to-height ratio: chubby at the head, flatter from side to side toward the tail. */
+const widthRatio = (s) => 0.84 - 0.32 * smooth01((s - 0.55) / 0.45);
+/** The centreline arches up very slightly mid-body. */
+const centreY = (s) => 0.03 * Math.sin(Math.PI * clamp(s, 0, 1));
 
-/** Model-space z of a body vertex: the rear half is stretched into a slim tail stalk. */
-function bodyZ(z) {
-  return z >= 0 ? z * BODY_RZ : z * BODY_RZ * 1.55;
+function bodyTop(z) {
+  const s = stationOf(z);
+  return centreY(s) + halfH(s);
 }
-
-/** Approximate body surface half-width at (y, z). */
+function bodyBottom(z) {
+  const s = stationOf(z);
+  return centreY(s) - halfH(s) * 0.97;
+}
+/** Body surface half-width at (y, z). */
 function bodyHalfWidth(y, z) {
-  const k = bodyTaper(z);
-  const zn = z >= 0 ? z / BODY_RZ : z / (BODY_RZ * 1.55);
-  const t = 1 - (y / (BODY_RY * k)) ** 2 - zn ** 2;
-  return BODY_RX * k * Math.sqrt(Math.max(0, t));
+  const s = stationOf(z);
+  const h = halfH(s);
+  if (h <= 0) return 0;
+  const yy = (y - centreY(s)) / h;
+  return h * widthRatio(s) * Math.sqrt(Math.max(0, 1 - yy * yy));
+}
+
+/** The body as a closed loft: rings of an oval cross-section, a pole at each end. */
+function bodyGeometry(nS, nR) {
+  const pos = [];
+  const idx = [];
+  const stations = [];
+  for (let i = 1; i < nS; i++) {
+    const s = S_END * (0.5 - 0.5 * Math.cos((Math.PI * i) / nS)); // denser near both ends
+    stations.push({ s, z: Z_NOSE - s * BODY_LEN, h: halfH(s), w: halfH(s) * widthRatio(s), cy: centreY(s) });
+  }
+  pos.push(0, centreY(0), Z_NOSE);
+  for (const st of stations) {
+    for (let j = 0; j < nR; j++) {
+      const th = (j / nR) * TAU;
+      const sy = Math.sin(th);
+      pos.push(st.w * Math.cos(th), st.cy + st.h * sy * (sy < 0 ? 0.97 : 1), st.z);
+    }
+  }
+  const tailPole = pos.length / 3;
+  pos.push(0, centreY(1), Z_NOSE - S_END * BODY_LEN);
+  const ring = (i, j) => 1 + i * nR + (((j % nR) + nR) % nR);
+  for (let j = 0; j < nR; j++) idx.push(0, ring(0, j), ring(0, j + 1));
+  for (let i = 0; i < stations.length - 1; i++) {
+    for (let j = 0; j < nR; j++) {
+      const a = ring(i, j), b = ring(i + 1, j), c = ring(i, j + 1), d = ring(i + 1, j + 1);
+      idx.push(a, b, c, c, b, d);
+    }
+  }
+  const L = stations.length - 1;
+  for (let j = 0; j < nR; j++) idx.push(tailPole, ring(L, j + 1), ring(L, j));
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  return g;
+}
+
+/**
+ * A fin as one closed, lens-shaped surface: thick at its root (sunk into the body) and thinning
+ * to a soft edge, so it grows out of the body instead of sitting on it like a cut-out.
+ * shape(u, v) → [y, z, halfThickness]; u runs along the root, v from root (0) to edge (1).
+ * colour(u, v) → colour. flip reverses the winding when u × v runs the other way (keeps the
+ * surface facing outward). Returns a painted, non-indexed geometry ready to merge.
+ */
+function finSurface(nu, nv, shape, colour, flip = false) {
+  const pos = [];
+  const uv = [];
+  const idx = [];
+  const ringN = 2 * nv; // up the +x face to the edge, back down the -x face
+  for (let i = 0; i <= nu; i++) {
+    const u = i / nu;
+    for (let k = 0; k < ringN; k++) {
+      const side = k <= nv ? 1 : -1;
+      const v = k <= nv ? k / nv : (ringN - k) / nv;
+      const [y, z, t] = shape(u, v);
+      pos.push(side * t, y, z);
+      uv.push(u, v);
+    }
+  }
+  for (let i = 0; i < nu; i++) {
+    for (let k = 0; k < ringN; k++) {
+      const a = i * ringN + k, b = i * ringN + ((k + 1) % ringN);
+      const c = a + ringN, d = b + ringN;
+      if (flip) idx.push(a, b, c, b, d, c);
+      else idx.push(a, c, b, b, c, d);
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  return paintVerts(g, (p, n, i) => colour(uv[i * 2], uv[i * 2 + 1]));
+}
+
+/** Pectoral fin (local space: root at the origin, blade sweeping back along -Z). */
+export function pectoralGeometry(colors = PIP_COLORS, detail = 1) {
+  return finSurface(
+    Math.round(10 * detail),
+    Math.round(6 * detail),
+    (u, v) => {
+      const a = 2 * u - 1;
+      const ry = -0.06 + 0.16 * u; // short root against the body
+      const ey = 0.04 + 0.27 * a; // rounded paddle outline
+      const ez = -(0.28 + 0.3 * Math.sqrt(Math.max(0, 1 - a * a)));
+      const t = 0.034 * (1 - v) ** 0.7 * Math.sin(Math.PI * u) ** 0.4 + 0.002;
+      return [ry + (ey - ry) * v, 0.02 + (ez - 0.02) * v ** 0.9, t];
+    },
+    (u, v) => mix(colors.fin, colors.finEdge, v),
+    true,
+  );
 }
 
 /**
@@ -45,69 +167,78 @@ function bodyHalfWidth(y, z) {
 export function buildFishGeometry(opts = {}) {
   const c = { ...PIP_COLORS, ...opts.colors };
   const parts = [];
+  const q = opts.simple ? 0.5 : 1; // mesh detail
 
-  // Body: egg-shaped low-poly ellipsoid with a darker back and a pale belly.
-  const body = new THREE.SphereGeometry(1, opts.simple ? 14 : 30, opts.simple ? 10 : 22);
-  warp(body, (x, y, z) => {
-    const zz = bodyZ(z);
-    const k = bodyTaper(zz);
-    return [x * BODY_RX * k, y * BODY_RY * k, zz];
-  });
+  // Body: darker back, warm flanks, pale belly.
+  const body = bodyGeometry(Math.round(44 * q), Math.round(32 * q));
   const cBack = new THREE.Color(c.back);
   const cBody = new THREE.Color(c.body);
   const cBelly = new THREE.Color(c.belly);
   parts.push(
     paintVerts(body, (p) => {
-      const t = p.y / BODY_RY;
+      const st = stationOf(p.z);
+      const h = Math.max(0.05, halfH(st));
+      const t = (p.y - centreY(st)) / h;
       if (t > 0) return cBody.clone().lerp(cBack, Math.min(1, t * 1.25));
       return cBody.clone().lerp(cBelly, Math.min(1, -t * 1.6));
     }),
   );
 
-  // Forked tail fin (the body itself tapers into the tail stalk).
-
-  const tail = finGeometry(
-    [
-      [0, 0.24],
-      [0.35, 0.5, 0.95, 0.95],
-      [0.72, 0.34],
-      [0.56, 0],
-      [0.72, -0.34],
-      [0.95, -0.95],
-      [0.35, -0.5, 0, -0.24],
-    ],
-    0.08,
-    !opts.simple,
+  // Forked tail: fans out from the stalk, longer lobes top and bottom.
+  const zt = Z_NOSE - BODY_LEN * 0.995;
+  parts.push(
+    finSurface(
+      Math.round(16 * q),
+      Math.round(8 * q),
+      (u, v) => {
+        const a = 2 * u - 1;
+        const ry = a * H_MAX * STALK * 0.9;
+        const ey = a * 0.95;
+        const ez = zt - (0.6 + 0.4 * Math.abs(a) ** 1.6);
+        const t = 0.05 * (1 - v) ** 0.8 * Math.sin(Math.PI * u) ** 0.35 + 0.002;
+        return [ry + (ey - ry) * v ** 0.85, zt + 0.06 + (ez - zt - 0.06) * v, t];
+      },
+      (u, v) => mix(c.fin, c.finEdge, v),
+      true,
+    ),
   );
-  tail.translate(0, 0.0, -1.5);
-  parts.push(paintVerts(tail, (p) => mix(c.fin, c.finEdge, Math.min(1, (-p.z - 1.5) / 0.95))));
 
-  // Dorsal fin.
-  const dorsal = finGeometry(
-    [
-      [0, 0],
-      [0.15, 0.4, 0.55, 0.52],
-      [0.95, 0.12],
-      [1.0, 0],
-    ],
-    0.06,
-    !opts.simple,
+  // Dorsal fin: rooted along the back, rises early and sweeps back, soft scalloped edge.
+  const dz0 = 0.42;
+  const dz1 = -0.68;
+  parts.push(
+    finSurface(
+      Math.round(20 * q),
+      Math.round(7 * q),
+      (u, v) => {
+        const zr = dz0 + (dz1 - dz0) * u;
+        const root = bodyTop(zr) - 0.08;
+        const h = 0.5 * Math.sin(Math.PI * u ** 0.72) ** 1.15 * (1 - 0.05 * (1 - Math.cos(u * TAU * 4)));
+        const t = 0.07 * (1 - v) ** 0.7 * Math.sin(Math.PI * u) ** 0.45 + 0.002;
+        return [root + v * (h + 0.08), zr - 0.26 * v ** 1.3 * (h / 0.5), t];
+      },
+      (u, v) => (v < 0.18 ? mix(c.back, c.fin, v / 0.18) : mix(c.fin, c.finEdge, (v - 0.18) / 0.82)),
+    ),
   );
-  dorsal.translate(0, 0.6, 0.38);
-  parts.push(paintVerts(dorsal, (p) => mix(c.fin, c.finEdge, (p.y - 0.6) / 0.5)));
 
-  // Small anal fin.
-  const anal = finGeometry(
-    [
-      [0, 0],
-      [0.55, 0],
-      [0.45, -0.32],
-    ],
-    0.05,
-    !opts.simple,
+  // Small anal fin under the rear belly.
+  const az0 = -0.3;
+  const az1 = -0.8;
+  parts.push(
+    finSurface(
+      Math.round(12 * q),
+      Math.round(5 * q),
+      (u, v) => {
+        const zr = az0 + (az1 - az0) * u;
+        const root = bodyBottom(zr) + 0.07;
+        const h = 0.28 * Math.sin(Math.PI * u ** 0.8);
+        const t = 0.05 * (1 - v) ** 0.7 * Math.sin(Math.PI * u) ** 0.45 + 0.002;
+        return [root - v * (h + 0.07), zr - 0.18 * v * (h / 0.28), t];
+      },
+      (u, v) => mix(c.fin, c.finEdge, v),
+      true,
+    ),
   );
-  anal.translate(0, -0.4, -0.45);
-  parts.push(paint(anal, c.fin));
 
   // Photophores: a glowing row along each lower flank plus two near the tail.
   const photoSpots = [];
@@ -306,18 +437,7 @@ export class Pip {
     this.model.add(this.body);
 
     // Pectoral fins (separate so they can flutter).
-    const pecGeo = paint(
-      finGeometry(
-        [
-          [0, 0.06],
-          [0.25, 0.25, 0.6, 0.12],
-          [0.5, -0.12],
-          [0.15, -0.14],
-        ],
-        0.04,
-      ),
-      PIP_COLORS.fin,
-    );
+    const pecGeo = pectoralGeometry();
     const finMat = litMaterial({ transparent: true, opacity: 0.92 });
     this.pecs = [];
     for (const side of [-1, 1]) {
