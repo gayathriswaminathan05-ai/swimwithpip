@@ -42,179 +42,129 @@ export class OctopusAmbush extends Encounter {
     return 'octopus';
   }
   hint() {
-    return 'An octopus rises over the rock, reaching for Pip. Answer to slip past.';
+    return 'An octopus slips out from behind the rock, reaching for Pip. Answer to slip past.';
   }
   get captureText() {
-    return 'The octopus pulled Pip behind its rock.';
+    return 'The octopus wrapped Pip up in its arms.';
   }
 
   onBuild() {
-    this.hold.set(0, 0.4, 8);
     const fl = this.floorAt(0, -2);
     this.fl = fl;
-    // A big rock in the middle of the path with the octopus behind it, taller rocks either side;
-    // Pip can slip past on the right.
+    this.hold.set(2.4, fl + 3.0, 10.5);
+    // The rock the octopus hides behind, with taller rocks either side; Pip slips past on the right.
     this.hideRock = this.rock(0, fl + 1.35, -1.0, 4.4, 3.6, 3.0, DEEP_ROCKS[1], 1, 0.3);
     this.rock(-5.6, fl + 2.6, -2.6, 2.9, 6.6, 3.2, DEEP_ROCKS[0], 0, 0.6);
     this.rock(6.2, fl + 2.4, -3.0, 3.0, 6.2, 3.1, DEEP_ROCKS[2], 2, 1.4);
     this.rock(0.5, fl + 1.2, -6.6, 5.4, 4.2, 3.2, DEEP_ROCKS[3], 0, 2);
-    // The hiding rock's extents (encounter space) guide where the arms drape.
     this.group.updateMatrixWorld(true);
     const box = new THREE.Box3().setFromObject(this.hideRock);
     box.min.sub(this.origin);
     box.max.sub(this.origin);
     this.rockTop = box.max.y - 0.25;
-    this.rockFront = box.max.z - 0.35;
-    this.rockBack = box.min.z + 0.35;
-    this.rockHalfW = (box.max.x - box.min.x) / 2 - 0.3;
+    this.rockFront = box.max.z;
+    this.rockBack = box.min.z;
 
     this.octo = new Octopus();
-    this.octoScale = 1.3;
-    // Perched on the back of the rock's top, head and eyes in full view…
-    this.perch = V(0.25, this.rockTop - 0.3, this.rockBack + 1.05);
-    // …but tucked down behind it until Pip comes close.
-    this.hidden = V(0.25, this.rockTop - 1.9, this.rockBack + 0.2);
-    this.rise = 0;
-    this.riseTarget = 0;
+    this.S = 1.25;
+    this.octo.group.scale.setScalar(this.S);
+    // Hidden behind the rock → cresting its left edge → out in the open on the sand, in full view.
+    this.hidden = V(-0.5, this.rockTop - 2.9, this.rockBack + 0.2);
+    this.crest = V(-1.6, this.rockTop + 0.1, (this.rockFront + this.rockBack) / 2);
+    this.open = V(-1.5, this.floorAt(-1.5, this.rockFront + 1.4) + 0.1, this.rockFront + 1.4);
     this.octo.group.position.copy(this.hidden);
-    this.octo.group.scale.setScalar(this.octoScale);
     this.group.add(this.octo.group);
 
-    // Arm roles by where each arm sits around the head: front (toward Pip), sides, back.
-    const arms = [...this.octo.tentacles].sort((p, q) => Math.abs(Math.atan2(p.out.x, p.out.z)) - Math.abs(Math.atan2(q.out.x, q.out.z)));
-    this.front = arms.slice(0, 3).sort((p, q) => p.out.x - q.out.x);
-    this.sides = arms.slice(3, 5).sort((p, q) => p.out.x - q.out.x);
-    this.back = arms.slice(5);
-    this.strikers = [...this.front, ...this.sides];
+    // Arm roles by where each arm sits around the head: the most forward arm reaches for Pip, the
+    // two rear arms are raised and curl over the head (as in the reference), the rest spread on
+    // the sand with their tips curling up.
+    const arms = [...this.octo.tentacles].sort((p, q) => q.out.z - p.out.z);
+    this.reach = arms[0];
+    this.raised = arms.slice(6).sort((p, q) => p.out.x - q.out.x);
+    this.sand = arms.slice(1, 6);
+    this.strikers = [this.reach, ...this.raised, ...this.sand.filter((t) => t.out.z > 0.2)];
     this.octo.setEyes(0);
     this.mode = 'hidden';
     this.history = [];
     this.t = 0;
-    this._buildDrapes();
+    this.cam = V(0.25, 0.5, 1).normalize(); // roughly toward the camera: suckers turn this way
     this._pose(true);
-  }
-
-  /** Point on the hiding rock's surface: cast a ray (encounter space) and stand off by `lift`. */
-  _hit(from, dir, lift, fallback) {
-    this._rc = this._rc || new THREE.Raycaster();
-    this._rc.set(from.clone().add(this.origin), dir.clone().normalize());
-    const h = this._rc.intersectObject(this.hideRock, false)[0];
-    if (!h) return fallback;
-    const n = h.face ? h.face.normal.clone().transformDirection(this.hideRock.matrixWorld) : dir.clone().negate();
-    return h.point.sub(this.origin).addScaledVector(n, lift);
-  }
-
-  /** Arm routes that hug the real rock: over the top edge and down the front or side faces. */
-  _buildDrapes() {
-    const top = this.rockTop;
-    const front = this.rockFront;
-    const back = this.rockBack;
-    const hw = this.rockHalfW;
-    const down = V(0, -1, 0);
-    const topAt = (x, z) => this._hit(V(x, top + 4, z), down, 0.26, V(x, top + 0.26, z));
-    const faceAt = (x, y) => this._hit(V(x, y, front + 8), V(0, 0, -1), 0.24, V(x, y, front + 0.24));
-    const sideAt = (sd, y, z) => this._hit(V(sd * (hw + 8), y, z), V(-sd, 0, 0), 0.24, V(sd * (hw + 0.24), y, z));
-    this.drapes = new Map();
-    this.front.forEach((arm, fi) => {
-      if (fi === 1) return; // the middle arm reaches for Pip instead
-      const j = fi - 1;
-      const xs = (k) => j * (0.95 + 0.55 * k) + 0.25;
-      this.drapes.set(arm, {
-        pts: [topAt(xs(0), front - 0.9), faceAt(xs(0.25), top - 0.45), faceAt(xs(0.55), top - 1.25), faceAt(xs(0.85), top - 2.0)],
-        curlSide: V(j * 0.8, 0.3, 0.7),
-      });
-    });
-    this.sides.forEach((arm, si) => {
-      const sd = si === 0 ? -1 : 1;
-      const mid = (front + back) / 2;
-      this.drapes.set(arm, {
-        pts: [topAt(sd * hw * 0.55, back + 1.3), sideAt(sd, top - 0.55, mid), sideAt(sd, top - 1.5, mid + 0.6), sideAt(sd, this.fl + 1.1, front - 0.3)],
-        curlSide: V(sd * 0.7, 0.3, 0.7),
-      });
-    });
   }
 
   /** Encounter-space point → the octopus's own space. */
   _o(v) {
-    return v.sub(this.octo.group.position).divideScalar(this.octoScale);
+    return v.clone().sub(this.octo.group.position).divideScalar(this.S);
   }
 
-  /** Root of an arm in encounter space. */
-  _root(arm) {
-    return arm.attach.clone().multiplyScalar(this.octoScale).add(this.octo.group.position);
-  }
-
-  /** Sets every arm's path for the current mode (encounter space, converted to octopus space). */
+  /** Sets every arm's path for the current mode. Paths are in the octopus's own space. */
   _pose(snap = false) {
     const t = this.t;
-    const g = this.game;
-    const top = this.rockTop;
-    const front = this.rockFront;
-    const back = this.rockBack;
-    const hw = this.rockHalfW;
-    const pipL = this.pipLocal();
-    const set = (arm, pts, opts, rate, under = V(0, -1, 0)) => {
-      const local = pts.map((p) => this._o(p.clone()));
-      const path = armPath(local, arm.length, { ...opts, curlSide: opts.curlSide.clone() });
-      arm.setPath(path, under, rate);
+    const S = this.S;
+    const pos = this.octo.group.position;
+    const sway = (i, f = 0.8) => Math.sin(t * f + i * 1.7);
+    const sandY = (this.floorAt(pos.x, pos.z) + 0.24 - pos.y) / S;
+    const pipL = this._o(this.game.pip.position.clone().sub(this.origin));
+    const toPip = V(pipL.x, 0, pipL.z).normalize();
+    const set = (arm, pts, opts, rate, under = V(0, -1, 0), face = null) => {
+      arm.setPath(armPath(pts, arm.length, opts), under, rate, face);
       if (snap) arm.snap();
     };
-    const sway = (i, f = 0.8) => Math.sin(t * f + i * 1.7);
-    const mode = this.mode;
-
-    this.octo.tentacles.forEach((arm) => {
-      const r = this._root(arm);
-      const out = arm.out;
+    for (const arm of this.octo.tentacles) {
+      const a = arm.attach;
+      const o = arm.out;
       const i = arm.index;
-      if (mode === 'hidden') {
-        set(arm, [r, r.clone().add(V(out.x * 0.7, -0.8, out.z * 0.4 - 0.5)), r.clone().add(V(out.x * 1.3, -1.9, out.z * 0.6 - 1.1))], { curlR: 0.42, curlSide: V(out.x, 0, out.z) }, 3);
-        return;
+      const striker = this.strikers.includes(arm);
+      if (this.mode === 'hidden') {
+        set(arm, [a, a.clone().add(V(o.x * 0.6, -0.7, o.z * 0.4)), a.clone().add(V(o.x * 1.2, -1.6, o.z * 0.8))], { curlR: 0.4, curlSide: V(o.x, 0, o.z) }, 3);
+        continue;
       }
-      if (this.back.includes(arm)) {
-        // Hanging down behind the rock.
-        set(arm, [r, r.clone().add(V(out.x * 1.0, -0.4, -0.6)), V(r.x + out.x * 1.8, top - 1.5, back - 0.7), V(r.x + out.x * 2.4, this.fl + 0.6, back - 1.5)], { curlR: 0.5, curlSide: V(out.x, 0.4, 0) }, 2.5);
-        return;
+      if (this.mode === 'climb') {
+        // Pulling itself over the rock: arms reach forward and down the front.
+        set(arm, [a, a.clone().add(V(o.x * 0.9, -0.3, 0.6 + o.z * 0.4)), a.clone().add(V(o.x * 1.6, -1.4, 1.5 + o.z * 0.5))], { curlR: 0.45, curlSide: V(0, 1, 0.4) }, 4);
+        continue;
       }
-      const fi = this.front.indexOf(arm);
-      const si = this.sides.indexOf(arm);
-      const striking = this.strikers.includes(arm);
-      if (mode === 'coil' && striking) {
-        set(arm, [r, V(r.x * 1.4, top + 1.3, front - 0.7), V(r.x * 1.8 + (fi - 1) * 0.5, top + 2.5, front + 0.2)], { curlR: 0.34, curlSide: V(0, -0.4, -1) }, 5);
-        return;
+      if (this.mode === 'coil' && striker) {
+        set(arm, [a, a.clone().add(V(o.x * 0.6, 1.4, -0.3)), a.clone().add(V(o.x * 1.0, 2.8, -0.1))], { curlR: 0.35, curlSide: V(0, -0.4, 1) }, 5, undefined, this.cam);
+        continue;
       }
-      if (mode === 'strike' && striking) {
-        const lag = this.history[Math.max(0, this.history.length - 9)] || g.pip.position;
-        const target = lag.clone().sub(this.origin).add(V(((fi >= 0 ? fi : si * 2 - 1) - 1) * 0.45, (i % 2) * 0.4 - 0.2, 0));
-        set(arm, [r, V(r.x * 1.3, top + 0.7, front - 0.2), target], { curlR: 0.22, curlSide: V(0, 1, 0) }, 9);
-        return;
-      }
-      if (mode === 'wrap' && striking) {
+      if (this.mode === 'strike' && striker) {
+        const lag = this.history[Math.max(0, this.history.length - 9)] || this.game.pip.position;
         const k = this.strikers.indexOf(arm);
-        set(arm, [r, V(r.x * 1.2, top + 0.6, front - 0.3), pipL.clone().add(V((k - 2) * 0.35, 0.5, -0.3))], { curlR: 0.32, curlSide: V(k % 2 ? 1 : -1, -0.6, 0.4) }, 6);
-        return;
+        const tgt = this._o(lag.clone().sub(this.origin)).add(V((k - 2) * 0.3, (k % 2) * 0.3 - 0.15, 0));
+        set(arm, [a, a.clone().add(V(o.x * 0.3, 0.9, 0.6)), tgt], { curlR: 0.22, curlSide: V(0, 1, 0) }, 9, undefined, this.cam);
+        continue;
       }
-      if (mode === 'tangled' && striking) {
+      if (this.mode === 'wrap' && striker) {
         const k = this.strikers.indexOf(arm);
-        const knot = V(0.9 + (k - 2) * 0.35, this.fl + 1.4 + (k % 2) * 0.4, front + 1.6);
-        set(arm, [r, V(r.x * 1.1, top + 0.2, front - 0.4), V(r.x * 0.8, top - 0.8, front + 0.5), knot], { curlR: 0.55, curlSide: V(k % 2 ? 1 : -1, 0.5, 0.3) }, 3);
-        return;
+        set(arm, [a, a.clone().add(V(o.x * 0.3, 0.8, 0.6)), pipL.clone().add(V((k - 2) * 0.25, 0.3, -0.2))], { curlR: 0.28, curlSide: V(k % 2 ? 1 : -1, -0.5, 0.4) }, 6, undefined, this.cam);
+        continue;
       }
-      if (mode === 'near' && arm === this.front[1]) {
-        set(arm, [r, V(0.3, top + 0.7, front + 0.4), pipL.clone().add(V(0, -0.1, -0.5))], { curlR: 0.2, curlSide: V(0, 1, 0) }, 10);
-        return;
+      if (this.mode === 'tangled' && striker) {
+        const k = this.strikers.indexOf(arm);
+        const knot = V(1.6 + (k - 2) * 0.3, 1.0 + (k % 2) * 0.35, 1.6);
+        set(arm, [a, a.clone().add(V(o.x * 0.4, 0.5, 0.6)), knot], { curlR: 0.5, curlSide: V(k % 2 ? 1 : -1, 0.5, 0.3) }, 3, undefined, this.cam);
+        continue;
       }
-      // Hold: draped over the rock (hugging its surface), tips curling away from it; the middle
-      // front arm rises toward Pip.
-      if (fi === 1) {
-        // Raised beside the head and curling over, like the arm held up in the reference; it
-        // sways toward Pip.
-        set(arm, [r, V(-0.7, top + 0.7, front - 1.0), V(-1.45 + 0.15 * sway(i), top + 1.7, front - 0.6 + 0.3 * sway(i, 0.7)), V(-1.2 + 0.25 * sway(i, 0.6), top + 2.8 + 0.15 * sway(i, 0.9), front + 0.1 + 0.35 * sway(i, 0.5))], { curlR: 0.55 + 0.08 * sway(i, 1.3), curlSide: V(1, -0.2, 0.2) }, 2.2, V(1, 0, 0));
-        return;
+      if (this.mode === 'near' && arm === this.reach) {
+        set(arm, [a, a.clone().add(V(0.2, 0.8, 0.9)), pipL.clone().add(V(0, -0.15, -0.35))], { curlR: 0.2, curlSide: V(0, 1, 0) }, 10, undefined, this.cam);
+        continue;
       }
-      const d = this.drapes.get(arm);
-      const pts = d.pts.map((p, k) => (k === d.pts.length - 1 ? p.clone().add(V(0.12 * sway(i), 0.1 * sway(i, 0.6), 0.12 * Math.max(0, sway(i, 0.5)))) : p));
-      set(arm, [r, ...pts], { curlR: 0.48 + 0.07 * sway(i, 1.2), curlSide: d.curlSide }, 2.2);
-    });
+      // Out in the open (hold).
+      if (arm === this.reach) {
+        set(arm, [a, a.clone().add(V(toPip.x * 0.5, 0.45, toPip.z * 0.5 + 0.3)), a.clone().add(V(toPip.x * 1.9 + 0.2 * sway(i), 1.0 + 0.2 * sway(i, 0.6), toPip.z * 1.9)), a.clone().add(V(toPip.x * 3.0 + 0.3 * sway(i, 0.7), 1.6 + 0.25 * sway(i, 0.9), toPip.z * 3.0))], { curlR: 0.5 + 0.06 * sway(i, 1.3), curlSide: V(0, 1, -0.2) }, 2.2, undefined, this.cam);
+      } else if (this.raised.includes(arm)) {
+        const sd = arm === this.raised[0] ? -1 : 1;
+        set(arm, [a, a.clone().add(V(sd * 0.55, 0.7, -0.25)), a.clone().add(V(sd * 1.45 + 0.15 * sway(i), 2.0, 0.0 + 0.2 * sway(i, 0.6))), a.clone().add(V(sd * 1.2 + 0.2 * sway(i, 0.7), 3.2 + 0.15 * sway(i, 0.9), 0.45))], { curlR: 0.62 + 0.06 * sway(i, 1.2), curlSide: V(-sd, -0.2, 0.3) }, 2.2, undefined, this.cam);
+      } else {
+        // Spread on the sand, tips curling up so their suckers show.
+        const side = V(-o.z, 0, o.x);
+        const mid = a.clone().add(V(o.x * 1.9, 0, o.z * 1.9)).addScaledVector(side, 0.25 * sway(i));
+        mid.y = sandY;
+        const end = a.clone().add(V(o.x * 3.0, 0, o.z * 3.0)).addScaledVector(side, 0.35 * sway(i, 0.6));
+        end.y = sandY + 0.04;
+        set(arm, [a, a.clone().add(V(o.x * 0.75, (sandY - a.y) * 0.6, o.z * 0.75)), mid, end], { curlR: 0.42 + 0.05 * sway(i, 1.1), curlSide: V(-o.x * 0.3, 1, -o.z * 0.3) }, 2.2);
+      }
+    }
   }
 
   update(dt, t) {
@@ -223,8 +173,6 @@ export class OctopusAmbush extends Encounter {
     const g = this.game;
     this.history.push(g.pip.position.clone());
     if (this.history.length > 20) this.history.shift();
-    this.rise = lerp(this.rise, this.riseTarget, damp(3, dt));
-    this.octo.group.position.lerpVectors(this.hidden, this.perch, this.rise);
     this._pose();
     this.octo.update(dt);
   }
@@ -232,19 +180,23 @@ export class OctopusAmbush extends Encounter {
   async approach() {
     const g = this.game;
     const swim = super.approach();
-    await this.sched.wait(1.3);
-    // The octopus rises over its rock, arms pouring over the edge toward Pip.
+    await this.sched.wait(1.1);
+    // Out it comes: over the rock's edge and down onto the sand, in full view.
     g.audio.danger();
     if (g.seaLife) g.seaLife.quiet = true; // a clean stage: passing schools keep away
     this.octo.setEyes(1);
-    this.riseTarget = 1;
+    this.mode = 'climb';
+    const P = this.octo.group.position;
+    const h0 = this.hidden.clone();
+    await this.sched.tween(0.8, (k) => P.lerpVectors(h0, this.crest, k), Ease.outCubic);
+    await this.sched.tween(0.9, (k) => P.lerpVectors(this.crest, this.open, k), Ease.inOutSine);
     this.mode = 'hold';
     await swim;
     g.pip.setExpression('scared', 2);
   }
 
   holdShot() {
-    return { target: this.L(0.5, (this.rockTop + 1.2 + 0.4) / 2 - 0.2, 3.0), yaw: 0.5, pitch: 0.12, radius: 6.4, rate: 1.6, rotRate: 1.1 };
+    return { target: this.L(-0.1, this.fl + 2.2, this.open.z + 2.4), yaw: -0.1, pitch: 0.1, radius: 5.4, rate: 1.6, rotRate: 1.1 };
   }
 
   async success() {
@@ -253,7 +205,7 @@ export class OctopusAmbush extends Encounter {
     this.mode = 'coil';
     this.octo.setEyes(1, 1);
     await this.sched.wait(0.45);
-    // …then strike where Pip was a moment ago, as Pip twists around the side of the rock.
+    // …then strike where Pip was a moment ago, as Pip twists away around the rock's right side.
     this.mode = 'strike';
     g.audio.whoosh();
     g.rig.setShot(this.followShot({ yaw: 0.75, pitch: 0.2, radius: 3.8 }));
@@ -261,11 +213,11 @@ export class OctopusAmbush extends Encounter {
     const side = this.fl + 2.2;
     await this.swim(
       [
-        [1.6, 0.2, 4.6],
+        [1.8, this.hold.y - 0.3, 7.6],
         [3.3, side, 1.0],
         [3.4, side, -2.4],
-        [1.8, 0.2, -6.5],
-        [0, 0, -this.exit],
+        [1.8, this.fl + 2.6, -6.5],
+        [0, this.fl + 3.0, -this.exit],
       ],
       2.8,
       Ease.inOutSine,
@@ -291,7 +243,7 @@ export class OctopusAmbush extends Encounter {
     g.shake(0.5);
     g.pip.setExpression('scared', 2.4);
     g.pip.shiver = 1;
-    await this.swim([[0, 0.7, 10.6]], 0.45, Ease.outCubic);
+    await this.swim([[this.hold.x, this.hold.y + 0.3, this.hold.z + 2.6]], 0.45, Ease.outCubic);
     this.mode = 'hold';
     await this.swim([[this.hold.x, this.hold.y, this.hold.z]], 1.1, Ease.inOutSine);
     g.hoverAt(this.holdWorld);
@@ -306,20 +258,19 @@ export class OctopusAmbush extends Encounter {
     await this.sched.wait(0.8);
     g.pip.setExpression('scared');
     g.pip.swimmer.effort = 1;
-    g.rig.setShot({ target: this.L(0, this.rockTop, 2), yaw: -0.3, pitch: 0.08, radius: 7, rate: 1, rotRate: 0.6 });
+    g.rig.setShot({ target: this.L(this.open.x, this.open.y + 1.6, this.open.z + 1), yaw: 0.2, pitch: 0.1, radius: 6.5, rate: 1, rotRate: 0.6 });
     const p0 = g.pip.position.clone();
-    const dest = this.L(0.25, this.rockTop + 0.5, this.rockBack + 1.6); // pulled in behind the rock
+    const dest = this.L(this.open.x + 0.3, this.open.y + 1.9, this.open.z + 1.3); // drawn in close to the octopus
     await this.sched.tween(
-      2.6,
+      2.4,
       (k) => {
         g.pip.position.lerpVectors(p0, dest, k);
-        g.pip.group.scale.setScalar(1 - 0.45 * k);
+        g.pip.group.scale.setScalar(1 - 0.35 * k);
         g.pip.glowBoost = 1 - 0.8 * k;
       },
       Ease.inOutCubic,
     );
     this.octo.setEyes(0.3, 1);
-    this.riseTarget = 0.4;
     g.pip.swimmer.effort = 0;
   }
 }

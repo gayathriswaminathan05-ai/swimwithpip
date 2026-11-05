@@ -19,6 +19,7 @@ export class Encounter {
     this.approachFrom = cfg.approachFrom ?? 26;
     this.stages = cfg.stages ?? 1;
     this.clearHalfWidth = cfg.clearHalfWidth ?? 7;
+    this.clearBefore = cfg.clearBefore ?? 18; // reef cleared this far before the hurdle (camera side)
     this.origin = new THREE.Vector3(0, 0, -this.s);
     this.group = null;
     this.built = false;

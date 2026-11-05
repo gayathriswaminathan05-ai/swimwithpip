@@ -13,7 +13,7 @@ export function createEncounters(game) {
   return [
     new PowerCurrent(game, { index: 0, s: 72, clearHalfWidth: 11.5 }),
     new GhostNet(game, { index: 1, s: 175, clearHalfWidth: 9 }),
-    new OctopusAmbush(game, { index: 2, s: 290, clearHalfWidth: 8 }),
+    new OctopusAmbush(game, { index: 2, s: 290, clearHalfWidth: 8, clearBefore: 34 }),
     new Rockfall(game, { index: 3, s: 365, exit: 16, clearHalfWidth: 11 }),
     new PredatorChase(game, { index: 4, s: 440, clearHalfWidth: 10, approachFrom: 24 }),
     new Vents(game, { index: 5, s: 515, clearHalfWidth: 7 }),

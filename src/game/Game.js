@@ -329,7 +329,7 @@ export class Game {
     if (this.encounters) this.encounters.forEach((e) => e.dispose());
     this.encounters = createEncounters(this);
     this.spans = this.encounters.map((e) => [e.s - e.approachFrom, e.s + e.exit]);
-    this.ocean.setClearZones(this.encounters.map((e) => ({ s0: e.s - 18, s1: e.s + e.exit + 6, halfWidth: e.clearHalfWidth })));
+    this.ocean.setClearZones(this.encounters.map((e) => ({ s0: e.s - (e.clearBefore ?? 18), s1: e.s + e.exit + 6, halfWidth: e.clearHalfWidth })));
     this.ocean.reset();
     this.encounters.forEach((e) => e.build());
     this.run = new RunState(this.encounters.length);

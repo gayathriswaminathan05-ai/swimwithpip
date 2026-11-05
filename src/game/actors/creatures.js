@@ -15,7 +15,7 @@ const _Y = new THREE.Vector3(0, 1, 0);
 // over a rock edge, down a face and into a spiral curl. Each bone is aligned to the path, and the
 // suckers face the inside of every bend, so curled tips show their suckers like the reference.
 
-const ARM = { top: 0xee4a22, light: 0xff8a4a, dot: 0xc93a18, under: 0xffd3c6, rim: 0xfff4ef, cup: 0xf4a090 };
+const ARM = { top: 0xee4a22, light: 0xff8a4a, dot: 0xc93a18, under: 0xffd9cf, rim: 0xfffaf6, cup: 0xe9707a };
 const _m = new THREE.Matrix4();
 const _x = new THREE.Vector3();
 const _z = new THREE.Vector3();
@@ -81,27 +81,27 @@ export class Tentacle {
     let n = 0;
     while (y < length * 0.96) {
       const rad = radiusAt(y / length);
-      const rs = rad * 0.44;
+      const rs = rad * 0.52;
       const rows = rad > 0.11 ? [n % 2 ? 0.42 : -0.42] : [0];
       for (const off of rows) {
         const a = Math.PI + off;
         const nrm = new THREE.Vector3(Math.cos(a), 0, Math.sin(a));
-        const cup = new THREE.CylinderGeometry(rs, rs * 0.92, rs * 0.55, 12, 1, false);
+        const cup = new THREE.CylinderGeometry(rs, rs * 0.9, rs * 0.7, 14, 1, false);
         cup.deleteAttribute('uv');
         const cpos = cup.attributes.position;
         const cc = [];
         for (let i = 0; i < cpos.count; i++) {
           const d = Math.hypot(cpos.getX(i), cpos.getZ(i)) / rs;
           const isTop = cpos.getY(i) > 0;
-          const cl = isTop && d < 0.55 ? cCup : cRim;
+          const cl = isTop && d < 0.6 ? cCup : cRim;
           cc.push(cl.r, cl.g, cl.b);
         }
         cup.setAttribute('color', new THREE.Float32BufferAttribute(cc, 3));
         cup.applyQuaternion(_q.setFromUnitVectors(_Y, nrm));
-        cup.translate(nrm.x * (rad * 0.93), y, nrm.z * (rad * 0.93));
+        cup.translate(nrm.x * (rad * 0.98), y, nrm.z * (rad * 0.98));
         cups.push(cup);
       }
-      y += rs * 2.35;
+      y += rs * 2.2;
       n++;
     }
     const geo = mergeGeometries(cups, false);
@@ -152,11 +152,13 @@ export class Tentacle {
    * Follow a path given in the parent's space; the first point should be the arm's root.
    * underHint: which way the suckers face at the root. rate: how quickly the arm gets there.
    */
-  setPath(points, underHint, rate) {
+  setPath(points, underHint, rate, face = null) {
     if (!this._curve || this._curve.points.length !== points.length) this._curve = new THREE.CatmullRomCurve3(points.map((p) => p.clone()), false, 'centripetal');
     else this._curve.points.forEach((p, i) => p.copy(points[i]));
     if (underHint) this._under.copy(underHint);
     if (rate !== undefined) this.rate = rate;
+    // face: keep the suckers turned toward this direction (e.g. the camera) along the whole arm.
+    this._face = face;
     this._solve();
   }
 
@@ -176,8 +178,10 @@ export class Tentacle {
     const N = _x.copy(this._under);
     for (let i = 0; i < segs; i++) {
       const d = this._d[i].subVectors(this._p[i + 1], this._p[i]).normalize();
-      // Suckers face the inside of each bend; on straight stretches keep the previous facing.
-      if (i > 0) {
+      // Suckers face the inside of each bend (or a chosen direction); on straight stretches keep
+      // the previous facing.
+      if (this._face) N.lerp(this._face, 0.5);
+      else if (i > 0) {
         const kv = _z.subVectors(d, this._d[i - 1]);
         if (kv.lengthSq() > 0.0016) {
           kv.addScaledVector(d, -kv.dot(d)).normalize();
