@@ -1,7 +1,7 @@
 // Cloudflare Pages hosting: the built game (dist/) is served as a static site at
-// https://pip-the-long-swim-home.pages.dev. Publish an update with:  npm run deploy
+// https://swimwithpip.pages.dev. Publish an update with:  npm run deploy
 {
-  "name": "pip-the-long-swim-home",
+  "name": "swimwithpip",
   "compatibility_date": "2026-11-04",
   "pages_build_output_dir": "./dist"
 }

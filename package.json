@@ -10,7 +10,7 @@
     "preview": "vite preview --host 0.0.0.0 --port 5181",
     "test": "node --test tests/*.test.js",
     "test:browser": "node tests/playthrough.mjs",
-    "deploy": "npm test && vite build && npx --yes wrangler@4 pages deploy dist --project-name pip-the-long-swim-home --branch main --commit-dirty=true"
+    "deploy": "npm test && vite build && npx --yes wrangler@4 pages deploy dist --project-name swimwithpip --branch main --commit-dirty=true"
   },
   "dependencies": {
     "@fontsource/lexend": "^5.3.0",

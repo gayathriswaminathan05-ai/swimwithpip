@@ -6,7 +6,7 @@ off by an ocean current. Pip swims on its own;
 you protect it by answering quiz questions whenever danger appears. You have **three lives**, and
 each wrong answer costs one.
 
-**Play it:** https://pip-the-long-swim-home.pages.dev (works on phones; best in portrait).
+**Play it:** https://swimwithpip.pages.dev (works on phones; best in portrait).
 
 See [DESIGN.md](DESIGN.md) for the concept, gameplay outline, visual and motion plan, and mobile
 interface plan.
