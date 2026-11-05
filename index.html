@@ -126,6 +126,9 @@
           <button id="btn-sound" class="icon-btn" type="button" aria-label="Mute sound" aria-pressed="false"></button>
         </header>
 
+        <!-- Sound on/off outside gameplay (title, story, rules, end cards); the header has its own -->
+        <button id="btn-sound-top" class="icon-btn sound-top" type="button" aria-label="Mute sound" aria-pressed="false"></button>
+
         <!-- Quiz panel -->
         <!-- Hurdle panel (top): what the danger is, kept apart from the quiz itself -->
         <aside id="hurdle" class="hurdle" hidden aria-labelledby="hurdle-title">
@@ -183,7 +186,7 @@
               <label><input type="radio" name="difficulty" value="hard" /><span>Hard</span></label>
             </fieldset>
             <button class="btn btn--primary btn--big" id="btn-start" type="button">Start the journey</button>
-            <button class="btn btn--secondary" id="btn-settings-title" type="button">Settings</button>
+            <p class="title__credits">Coral models: “Coral Reef Kit” by <a href="https://poly.pizza/bundle/Coral-Reef-Kit-ghN8EmbYa6" target="_blank" rel="noopener">MiniPoly</a>, <a href="https://creativecommons.org/licenses/by/3.0/" target="_blank" rel="noopener">CC BY 3.0</a></p>
           </div>
         </section>
 
@@ -216,47 +219,7 @@
             <p class="card__lead" id="pause-progress"></p>
             <button class="btn btn--primary btn--big" id="btn-resume" type="button">Resume</button>
             <button class="btn btn--secondary" id="btn-restart" type="button">Restart journey</button>
-            <button class="btn btn--secondary" id="btn-settings-pause" type="button">Settings</button>
             <button class="btn btn--secondary" id="btn-quit" type="button">Quit to title</button>
-          </div>
-        </section>
-
-        <!-- Settings -->
-        <section id="settings" class="screen screen--card" hidden role="dialog" aria-modal="true" aria-labelledby="settings-h">
-          <div class="card">
-            <h2 class="card__h" id="settings-h">Settings</h2>
-            <div class="setting">
-              <span class="setting__label" id="lbl-sound">Sound</span>
-              <button class="toggle" id="set-sound" type="button" role="switch" aria-checked="true" aria-labelledby="lbl-sound"><span></span></button>
-            </div>
-            <div class="setting" id="row-narrator">
-              <span class="setting__label" id="lbl-narrator">Narrator reads the story</span>
-              <button class="toggle" id="set-narrator" type="button" role="switch" aria-checked="true" aria-labelledby="lbl-narrator"><span></span></button>
-            </div>
-            <div class="setting">
-              <label class="setting__label" for="set-quality">Visual quality</label>
-              <select id="set-quality">
-                <option value="auto">Auto</option>
-                <option value="low">Low (battery saver)</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-              </select>
-            </div>
-            <div class="setting">
-              <label class="setting__label" for="set-motion">Reduced motion</label>
-              <select id="set-motion">
-                <option value="system">Match device</option>
-                <option value="on">On</option>
-                <option value="off">Off</option>
-              </select>
-            </div>
-            <div class="setting">
-              <span class="setting__label" id="lbl-skip">Show “Skip (test)” button</span>
-              <button class="toggle" id="set-skip" type="button" role="switch" aria-checked="true" aria-labelledby="lbl-skip"><span></span></button>
-            </div>
-            <p class="setting__note" id="quality-note"></p>
-            <p class="setting__credits">Coral models: “Coral Reef Kit” by <a href="https://poly.pizza/bundle/Coral-Reef-Kit-ghN8EmbYa6" target="_blank" rel="noopener">MiniPoly</a> (Poly Pizza), <a href="https://creativecommons.org/licenses/by/3.0/" target="_blank" rel="noopener">CC BY 3.0</a> / CC0. Fonts: Unbounded &amp; Lexend (SIL OFL). Built with Three.js.</p>
-            <button class="btn btn--primary" id="btn-settings-done" type="button">Done</button>
           </div>
         </section>
 

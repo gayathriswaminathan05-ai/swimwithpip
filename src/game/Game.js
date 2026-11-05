@@ -29,6 +29,8 @@ export const QUALITY = {
   high: { name: 'high', pixelRatio: 2, snow: 750, decor: 1, shafts: true, caustics: true, fogScale: 1, particles: 1, school: 20 },
 };
 const QUALITY_ORDER = ['low', 'medium', 'high'];
+// Test-mode "Skip (test)" button on every question. Set to false before sharing with players.
+const SHOW_TEST_SKIP = true;
 const SETTINGS_KEY = 'pip-way-home-settings';
 // Questions already asked on this device, oldest first, so each new game brings fresh ones.
 const SEEN_KEY = 'pip-way-home-seen-questions';
@@ -41,7 +43,7 @@ const _v = new THREE.Vector3();
 const _v2 = new THREE.Vector3();
 
 function loadSettings() {
-  const defaults = { muted: false, quality: 'auto', motion: 'system', difficulty: 'medium', showSkip: true, narrator: true };
+  const defaults = { muted: false, quality: 'auto', motion: 'system', difficulty: 'medium' };
   try {
     return { ...defaults, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') };
   } catch {
@@ -59,7 +61,10 @@ export class Game {
     this.timeScale = clamp(Number(this.params.get('speed')) || 1, 0.1, 8);
     this.seed = this.params.has('seed') ? Number(this.params.get('seed')) : undefined;
     this.settings = loadSettings();
-    if (this.params.get('quality')) this.settings.quality = this.params.get('quality');
+    // There is no settings screen: quality and motion follow the device (or ?quality= for
+    // testing), whatever an older version may have saved. Only sound and difficulty are kept.
+    this.settings.quality = this.params.get('quality') || 'auto';
+    this.settings.motion = 'system';
     this.state = 'loading';
     this.paused = false;
     this.clock = 0;
@@ -141,7 +146,7 @@ export class Game {
     this.audio = new AudioFX();
     this.audio.setMuted(this.settings.muted);
     this.narrator = new Narrator();
-    this.narrator.setEnabled(this.settings.narrator !== false);
+    this.narrator.setEnabled(true); // the sound button is the one switch for voice and effects
     this.narrator.setMuted(this.settings.muted);
     this.ui = new UI(this._handlers());
     this.ui.setDifficulty(this.settings.difficulty);
@@ -182,19 +187,6 @@ export class Game {
       onSkip: () => this.skipIntro(),
       onEscape: () => (this.paused ? this.resume() : this.pause()),
       onToggleSound: () => this.setMuted(!this.settings.muted),
-      onToggleSkip: () => {
-        this.settings.showSkip = !this.settings.showSkip;
-        this._save();
-        this._syncSettingsUI();
-      },
-      onToggleNarrator: () => {
-        this.settings.narrator = !this.settings.narrator;
-        this.narrator.setEnabled(this.settings.narrator);
-        this._save();
-        this._syncSettingsUI();
-      },
-      onQuality: (q) => this.setQuality(q),
-      onMotion: (m) => this.setMotion(m),
       onDifficulty: (d) => {
         this.settings.difficulty = d;
         this._save();
@@ -300,13 +292,6 @@ export class Game {
     this._syncSettingsUI();
   }
 
-  setQuality(pref) {
-    this.settings.quality = pref;
-    this._save();
-    this._applyQuality(this._resolveQuality(pref));
-    this._syncSettingsUI();
-  }
-
   _applyQuality(name) {
     if (name === this.qualityName) return;
     this.qualityName = name;
@@ -315,12 +300,6 @@ export class Game {
     this.school.mesh.count = this.quality.school;
     this.ocean.setQuality(this.quality);
     this.onResize();
-  }
-
-  setMotion(pref) {
-    this.settings.motion = pref;
-    this._save();
-    this._applyMotion();
   }
 
   _applyMotion() {
@@ -334,16 +313,7 @@ export class Game {
 
   _syncSettingsUI() {
     if (!this.ui) return;
-    const auto = this.settings.quality === 'auto';
-    this.ui.syncSettings({
-      muted: this.settings.muted,
-      quality: this.settings.quality,
-      motion: this.settings.motion,
-      qualityNote: auto ? `Auto is using ${this.qualityName} quality on this device.` : '',
-      showSkip: this.settings.showSkip,
-      narrator: this.settings.narrator !== false,
-      narratorAvailable: this.narrator.available,
-    });
+    this.ui.syncSettings({ muted: this.settings.muted, showSkip: SHOW_TEST_SKIP });
   }
 
   // =====================================================================
@@ -1107,7 +1077,6 @@ export class Game {
     if (!this.paused) return;
     this.paused = false;
     this.ui.hide('pause');
-    this.ui.hide('settings');
     this.audio.resume();
     this.narrator.resume();
     this.lastTime = performance.now();

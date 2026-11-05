@@ -52,15 +52,17 @@ serve. Preview it with `npm run preview` (port 5181). ES modules need a web serv
   are written so a player from any country can answer them.
 - **Pause:** the ⏸ button or **Esc** / **P**. The game also pauses automatically when you switch
   tabs or apps.
-- **Sound:** the speaker button or **M**.
-- **Settings** (title screen or pause menu): sound, visual quality (Auto / Low / Medium / High),
-  reduced motion (Match device / On / Off), and the test-mode Skip button.
+- **Sound:** the speaker button (top-right corner on the title, story and cards; in the header
+  while playing) or **M**. It switches off the narrator and all effects, and is remembered.
+- There is no settings screen: visual quality adjusts itself to the device (add `?quality=low`,
+  `medium` or `high` to the URL to force one), and reduced motion follows the device setting.
 
 ### Test-mode Skip button
 
 Every question has a small **SKIP (TEST)** button. It passes the hurdle (and plays its escape
 animation) without answering, without costing a life, and without counting as an answer. Turn it
-off under **Settings → Show "Skip (test)" button** before sharing the game with players.
+off before sharing the game with players by setting `SHOW_TEST_SKIP = false` at the top of
+`src/game/Game.js`.
 
 ## Edit the questions
 
@@ -97,17 +99,18 @@ pip-way-home/
 
 ## Assets and licences
 
-Almost everything is generated in code: Pip, the creatures, rocks, procedural corals, textures,
-particles and synthesised audio. The only third-party files are five coral models, all used under
-licences that allow this.
+Almost everything is made in code for this game: Pip, its family, every creature (octopus,
+predator, jellyfish, whale, turtles, rays), rocks, procedural corals, textures, particles and the
+synthesised sound effects. The only third-party files are five coral models, all used under
+licences that allow this. The narration is AI voice (ElevenLabs "Isla", generated via Higgsfield).
 
 - **Coral models:** "Coral Reef Kit" by **MiniPoly** via
   [Poly Pizza](https://poly.pizza/bundle/Coral-Reef-Kit-ghN8EmbYa6). Set 1 (tube corals) is
   [CC0](https://creativecommons.org/publicdomain/zero/1.0/); Sets 2–5 (sprigs, staghorn, egg
   sponges, barrel sponges) are [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/).
   The files are in `public/models/minipoly/`, with a full credit table in
-  [CREDITS.md](public/models/minipoly/CREDITS.md). The game also credits MiniPoly under
-  Settings. If the models fail to load, the reef falls back to procedural corals.
+  [CREDITS.md](public/models/minipoly/CREDITS.md). The game credits MiniPoly on the title
+  screen, as CC BY 3.0 requires. If the models fail to load, the reef falls back to procedural corals.
 - **Fonts:** [Unbounded](https://fonts.google.com/specimen/Unbounded) (headings and buttons) and
   [Lexend](https://fonts.google.com/specimen/Lexend) (reading text) via Fontsource, both under the
   SIL Open Font Licence 1.1.

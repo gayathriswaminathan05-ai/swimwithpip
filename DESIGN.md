@@ -40,7 +40,8 @@ The interface ("Sunlit reef") is bright and playful but its own thing, not a Duo
 | Timer | None |
 | Visual quality | Auto (medium on phones, high on desktop; steps down if the frame rate drops) |
 | Reduced motion | Follows the device setting |
-| Test-mode "Skip (test)" button | On (can be turned off in Settings) |
+| Test-mode "Skip (test)" button | On (`SHOW_TEST_SKIP` in `src/game/Game.js`) |
+| Settings screen | None. A sound on/off button is always in reach; everything else adapts itself |
 | Coral models | MiniPoly "Coral Reef Kit" (5 sets) mixed with procedural corals; procedural only if loading fails |
 
 ## 2. Gameplay outline
@@ -225,7 +226,7 @@ is in `src/data/narration.js` and `design/narration-script.md`.
 - **Staying in sync:** the intro waits at natural pauses for the narrator, so captions and voice
   never drift apart.
 - **Controls:** Skip intro and "Let's swim!" stop the voice, pause pauses it, and mute silences it.
-  Settings has a "Narrator reads the story" switch. Automated test runs stay silent.
+  The sound button is the one switch for the voice and all effects. Automated test runs stay silent.
 
 ## 4. Mobile interface plan (portrait first)
 
@@ -241,6 +242,11 @@ is in `src/data/narration.js` and `design/narration-script.md`.
   whose badge, name and buttons rise in one after another. The title keeps the message as a white
   "? A deep-sea quiz adventure" badge above "Pip". Splash styles live inline in `index.html` so it
   paints before the main bundle loads.
+- **Sound button:** whenever the gameplay header is hidden (title, story intro, rules, end cards)
+  a round speaker button sits in the top-right corner, with "Skip intro" beside it; during play
+  the header's own speaker button takes over. **M** toggles sound anywhere.
+- **Title credit:** a small line under "Start the journey" credits the MiniPoly coral models
+  (CC BY 3.0 requires visible credit).
 - **Header:** a frosted pill at the top that respects the notch and safe areas. Every hit area is
   at least 44 × 44 px. It holds:
   - pause and sound buttons

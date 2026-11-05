@@ -53,6 +53,7 @@ export class UI {
       zone: $('zone-label'),
       hudCount: $('hud-count'),
       btnSound: $('btn-sound'),
+      btnSoundTop: $('btn-sound-top'),
       btnPause: $('btn-pause'),
       quiz: $('quiz'),
       hurdle: $('hurdle'),
@@ -78,7 +79,6 @@ export class UI {
       title: $('title'),
       rules: $('rules'),
       pause: $('pause'),
-      settings: $('settings'),
       gameover: $('gameover'),
       victory: $('victory'),
     };
@@ -86,7 +86,6 @@ export class UI {
     this.lastKeyboard = false;
     this.quizOpen = false;
     this.timers = {};
-    this.settingsReturn = null;
     installPressRing(document);
     this._bind();
   }
@@ -97,6 +96,7 @@ export class UI {
     this.setMutedIcon(false);
     e.btnPause.addEventListener('click', () => this.h.onPause());
     e.btnSound.addEventListener('click', () => this.h.onToggleSound());
+    e.btnSoundTop.addEventListener('click', () => this.h.onToggleSound());
 
     e.answers.forEach((btn) => {
       btn.addEventListener('click', () => this._submit(Number(btn.dataset.i)));
@@ -118,16 +118,11 @@ export class UI {
         if (ev.repeat) return;
         const k = ev.key.toLowerCase();
         if (k === 'escape' || k === 'p') {
-          if (!this.el.settings.hidden) {
-            this._closeSettings();
-            ev.preventDefault();
-            return;
-          }
           this.h.onEscape();
           ev.preventDefault();
           return;
         }
-        if (k === 'm' && !this.el.hud.hidden) {
+        if (k === 'm') {
           this.h.onToggleSound();
           return;
         }
@@ -145,9 +140,6 @@ export class UI {
     window.addEventListener('pointerdown', () => (this.lastKeyboard = false), true);
 
     $('btn-start').addEventListener('click', () => this.h.onStart(this.getDifficulty()));
-    $('btn-settings-title').addEventListener('click', () => this.openSettings('title'));
-    $('btn-settings-pause').addEventListener('click', () => this.openSettings('pause'));
-    $('btn-settings-done').addEventListener('click', () => this._closeSettings());
     $('btn-resume').addEventListener('click', () => this.h.onResume());
     $('btn-restart').addEventListener('click', () => this.h.onRestart());
     $('btn-quit').addEventListener('click', () => this.h.onQuit());
@@ -157,12 +149,6 @@ export class UI {
     $('btn-win-title').addEventListener('click', () => this.h.onQuit());
     e.skip.addEventListener('click', () => this.h.onSkip());
 
-    const sound = $('set-sound');
-    sound.addEventListener('click', () => this.h.onToggleSound());
-    $('set-skip').addEventListener('click', () => this.h.onToggleSkip?.());
-    $('set-narrator').addEventListener('click', () => this.h.onToggleNarrator?.());
-    $('set-quality').addEventListener('change', (ev) => this.h.onQuality(ev.target.value));
-    $('set-motion').addEventListener('change', (ev) => this.h.onMotion(ev.target.value));
     document.querySelectorAll('input[name="difficulty"]').forEach((r) => r.addEventListener('change', () => this.h.onDifficulty?.(this.getDifficulty())));
   }
 
@@ -193,7 +179,7 @@ export class UI {
   }
 
   hideScreens() {
-    for (const n of ['title', 'rules', 'pause', 'settings', 'gameover', 'victory']) this.el[n].hidden = true;
+    for (const n of ['title', 'rules', 'pause', 'gameover', 'victory']) this.el[n].hidden = true;
   }
 
   getDifficulty() {
@@ -206,42 +192,25 @@ export class UI {
     if (r) r.checked = true;
   }
 
-  openSettings(from) {
-    this.settingsReturn = from;
-    if (from === 'pause') this.el.pause.hidden = true;
-    this.show('settings', 'set-sound');
-  }
-
-  _closeSettings() {
-    this.el.settings.hidden = true;
-    if (this.settingsReturn === 'pause') this.show('pause', 'btn-resume');
-    else if (this.settingsReturn === 'title') this.show('title', 'btn-start');
-    this.settingsReturn = null;
-  }
-
-  syncSettings({ muted, quality, motion, qualityNote, showSkip = true, narrator = true, narratorAvailable = true }) {
-    $('set-narrator').setAttribute('aria-checked', String(narrator));
-    $('row-narrator').hidden = !narratorAvailable;
-    const s = $('set-sound');
-    s.setAttribute('aria-checked', String(!muted));
-    $('set-skip').setAttribute('aria-checked', String(showSkip));
+  /** Applies the player's sound choice and the test Skip button. */
+  syncSettings({ muted, showSkip = true }) {
     this.showSkipQ = showSkip;
     this.el.skipQ.hidden = !showSkip || !this.gate.isOpen;
-    $('set-quality').value = quality;
-    $('set-motion').value = motion;
-    $('quality-note').textContent = qualityNote || '';
     this.setMutedIcon(muted);
   }
 
   setMutedIcon(muted) {
-    this.el.btnSound.innerHTML = muted ? ICONS.soundOff : ICONS.soundOn;
-    this.el.btnSound.setAttribute('aria-label', muted ? 'Turn sound on' : 'Mute sound');
-    this.el.btnSound.setAttribute('aria-pressed', String(muted));
+    for (const b of [this.el.btnSound, this.el.btnSoundTop]) {
+      b.innerHTML = muted ? ICONS.soundOff : ICONS.soundOn;
+      b.setAttribute('aria-label', muted ? 'Turn sound on' : 'Mute sound');
+      b.setAttribute('aria-pressed', String(muted));
+    }
   }
 
   // ---------- HUD ----------
   showHUD(on) {
     this.el.hud.hidden = !on;
+    this.el.btnSoundTop.hidden = on;
   }
 
   buildTrack(fractions) {
