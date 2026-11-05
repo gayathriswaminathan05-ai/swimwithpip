@@ -52,7 +52,7 @@ export function rockGeo(seed, opts = {}) {
 /**
  * A smooth tube along a gently curving path whose radius tapers from r0 to r1, with a rounded tip.
  */
-function taperedTube(points, r0, r1, { radial = 7, segs = 7, tip = true } = {}) {
+export function taperedTube(points, r0, r1, { radial = 7, segs = 7, tip = true } = {}) {
   const curve = new THREE.CatmullRomCurve3(points, false, 'centripetal');
   const g = new THREE.TubeGeometry(curve, segs, 1, radial, false);
   const pos = g.attributes.position;

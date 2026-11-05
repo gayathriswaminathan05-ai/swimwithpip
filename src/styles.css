@@ -706,18 +706,6 @@ button, select { font: inherit; }
   box-shadow: inset 0 1px 0 #fff, inset 0 0 0 1px rgba(150, 200, 225, 0.4), 0 6px 16px rgba(8, 60, 84, 0.22);
 }
 
-/* Asset credit on the title screen (the coral models are CC BY 3.0) */
-.title__credits {
-  margin: 2px 0 0;
-  text-align: center;
-  font-size: 11.5px;
-  line-height: 1.4;
-  font-weight: 500;
-  color: rgba(255, 255, 255, 0.9);
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
-}
-.title__credits a { color: #fff; text-decoration: underline; text-underline-offset: 2px; }
-
 /* Landscape phones: compact title and cards */
 @media (orientation: landscape) and (max-height: 560px) {
   .title__top { padding-top: 0; }

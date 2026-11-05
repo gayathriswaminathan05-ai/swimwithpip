@@ -86,7 +86,7 @@ pip-way-home/
 │       ├── audio.js         Synthesised sound effects and ambient music (Web Audio, no files)
 │       ├── core/            Scheduler (game-clock tweens), camera rig, maths/noise utils
 │       ├── gfx/             Geometry helpers, shaders (swim, sway, rim, caustics), particles
-│       ├── world/           Ocean areas, reef generator, current wisps
+│       ├── world/           Ocean areas, reef generator, our coral set, current wisps
 │       ├── actors/          Pip and the swimmer rig, the school, octopus, predator, jellyfish, whale
 │       ├── encounters/      The eight hurdles (approach / question framing / escape / near miss / capture)
 │       ├── logic/           Pure rules: question deck, three-life run state, answer gate
@@ -99,18 +99,14 @@ pip-way-home/
 
 ## Assets and licences
 
-Almost everything is made in code for this game: Pip, its family, every creature (octopus,
-predator, jellyfish, whale, turtles, rays), rocks, procedural corals, textures, particles and the
-synthesised sound effects. The only third-party files are five coral models, all used under
-licences that allow this. The narration is AI voice (ElevenLabs "Isla", generated via Higgsfield).
+Everything you see is made in code for this game: Pip, its family, every creature (octopus,
+predator, jellyfish, whale, turtles, rays), rocks, all the corals and sponges, textures, particles
+and the synthesised sound effects. There are no third-party models or images, so nothing needs a
+credit in the game. The narration is AI voice (ElevenLabs "Isla", generated via Higgsfield).
 
-- **Coral models:** "Coral Reef Kit" by **MiniPoly** via
-  [Poly Pizza](https://poly.pizza/bundle/Coral-Reef-Kit-ghN8EmbYa6). Set 1 (tube corals) is
-  [CC0](https://creativecommons.org/publicdomain/zero/1.0/); Sets 2–5 (sprigs, staghorn, egg
-  sponges, barrel sponges) are [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/).
-  The files are in `public/models/minipoly/`, with a full credit table in
-  [CREDITS.md](public/models/minipoly/CREDITS.md). The game credits MiniPoly on the title
-  screen, as CC BY 3.0 requires. If the models fail to load, the reef falls back to procedural corals.
+- **Corals:** our own set in `src/game/world/corals.js` (tube clusters, soft sprigs, staghorn, egg
+  sponges, barrel sponges, each in several colours) alongside the reef pieces in
+  `src/game/world/reef.js`. `design/coral-viewer.html` shows every coral type and colour.
 - **Fonts:** [Unbounded](https://fonts.google.com/specimen/Unbounded) (headings and buttons) and
   [Lexend](https://fonts.google.com/specimen/Lexend) (reading text) via Fontsource, both under the
   SIL Open Font Licence 1.1.

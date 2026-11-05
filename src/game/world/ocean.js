@@ -442,15 +442,15 @@ export class Ocean {
     };
   }
 
-  /** Adds the MiniPoly coral kit (loaded GLB models) to the reef generator. */
+  /** Adds our coral set (see world/corals.js) to the reef generator. */
   setKit(kit) {
-    if (!kit || !kit.texture) return;
+    if (!kit) return;
     this.kit = kit;
-    const tex = kit.texture;
-    // vertexColors: true — each model variant's colour is stored per vertex.
-    this.mats.kit = shared(litMaterial({ map: tex, vertexColors: true, nearFade: true }));
-    this.mats.kitSway = shared(litMaterial({ map: tex, vertexColors: true, nearFade: true, sway: makeSwayUniforms({ amp: 0.12, height: 1.2, speed: 1.4 }) }));
-    this.mats.kitGlow = shared(litMaterial({ map: tex, vertexColors: true, nearFade: true, emissive: 0x9a8aff, emissiveIntensity: 0.35 }));
+    const map = kit.texture ? { map: kit.texture } : {};
+    // vertexColors: true — each coral variant's colour is stored per vertex.
+    this.mats.kit = shared(litMaterial({ ...map, vertexColors: true, nearFade: true }));
+    this.mats.kitSway = shared(litMaterial({ ...map, vertexColors: true, nearFade: true, sway: makeSwayUniforms({ amp: 0.12, height: 1.2, speed: 1.4 }) }));
+    this.mats.kitGlow = shared(litMaterial({ ...map, vertexColors: true, nearFade: true, emissive: 0x9a8aff, emissiveIntensity: 0.35 }));
   }
 
   // ---------- Chunks ----------
@@ -593,7 +593,7 @@ export class Ocean {
       return side * (m + r() * span);
     };
     const kit = this.kit;
-    // Kit corals keep their own painted colours; deeper water cools them a little.
+    // Our coral set keeps its own painted colours; deeper water cools them a little.
     const kitTint = zi === 1 ? 0xb4c6ee : 0xffffff;
     const coralOnTop = (x, y, z, big) => {
       const roll = r();

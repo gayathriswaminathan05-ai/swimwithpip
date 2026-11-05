@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Coral viewer</title>
+<link rel="icon" href="data:," />
+<style>html, body { margin: 0; background: #2a7f9a; } canvas { display: block; }</style>
+</head>
+<body>
+<script type="module">
+  // Dev tool: lays out every coral type in our coral set (src/game/world/corals.js), one row per
+  // type, one column per colour variant.
+  import * as THREE from 'three';
+  import { litMaterial, globalUniforms } from '/src/game/gfx/materials.js';
+  import { buildCoralKit } from '/src/game/world/corals.js';
+  const kit = buildCoralKit();
+  const W = 1400, H = 900;
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(1);
+  renderer.setSize(W, H);
+  renderer.setClearColor(0x2a7f9a);
+  document.body.appendChild(renderer.domElement);
+  const scene = new THREE.Scene();
+  scene.add(new THREE.HemisphereLight(0xcff4ff, 0x1d4a63, 1.5));
+  const sun = new THREE.DirectionalLight(0xffffff, 1.5);
+  sun.position.set(2, 5, 4);
+  scene.add(sun);
+  const mat = litMaterial({ vertexColors: true });
+  const keys = ['tube', 'sprig', 'stag', 'egg', 'barrel'];
+  keys.forEach((k, row) => {
+    (kit.sets[k] || []).forEach((g, col) => {
+      const m = new THREE.Mesh(g, mat);
+      m.position.set(col * 3 - 6, (2 - row) * 2.9 - 1.2, 0);
+      m.rotation.y = 0.4;
+      scene.add(m);
+    });
+  });
+  const cam = new THREE.PerspectiveCamera(30, W / H, 0.1, 100);
+  cam.position.set(0, 3, 30);
+  cam.lookAt(0, -0.6, 0);
+  renderer.render(scene, cam);
+  window.__ready = true;
+</script>
+</body>
+</html>

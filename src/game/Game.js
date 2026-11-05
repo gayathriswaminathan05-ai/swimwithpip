@@ -21,7 +21,7 @@ import { QuestionDeck } from './logic/quiz.js';
 import { RunState } from './logic/run.js';
 import { QUESTIONS } from '../data/questions.js';
 import { createEncounters, HOME_S } from './encounters/index.js';
-import { loadCoralKit } from './world/kit.js';
+import { buildCoralKit } from './world/corals.js';
 
 export const QUALITY = {
   low: { name: 'low', pixelRatio: 1, snow: 200, decor: 0.5, shafts: false, caustics: false, fogScale: 0.85, particles: 0.6, school: 12 },
@@ -135,13 +135,8 @@ export class Game {
     await nextFrame();
 
     progress(0.76, 'Growing corals…');
-    try {
-      const kit = await loadCoralKit((p) => progress(0.76 + p * 0.08, 'Growing corals…'));
-      this.ocean.setKit(kit);
-    } catch (e) {
-      // The reef still works with procedural corals only.
-      console.warn('Coral models could not be loaded; using procedural corals.', e);
-    }
+    this.ocean.setKit(buildCoralKit());
+    await nextFrame();
     progress(0.85, 'Placing the hurdles…');
     this.audio = new AudioFX();
     this.audio.setMuted(this.settings.muted);
