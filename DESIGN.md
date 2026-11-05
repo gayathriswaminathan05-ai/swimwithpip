@@ -23,7 +23,8 @@ atmospheric depth, slanted light rays and a rippling surface overhead. The palet
 The interface ("Sunlit reef") is bright and playful but its own thing, not a Duolingo look-alike:
 - Unbounded for headings and buttons, Lexend for easy reading
 - light frosted panels that let a little ocean through, instead of flat white cards
-- soft pastel answer cards (sky, peach, lilac, sand) and glossy coral "candy" buttons, with no hard
+- calm white answer cards (colour only means something: coral is your tap, sea green right, rose
+  wrong) and glossy coral "candy" buttons, with no hard
   ledge shadows
 - a press ring in a deeper shade of whatever you touch
 - illustrated hurdle icons on an amber lantern disc
@@ -123,9 +124,19 @@ synchronise, and they swim home together to a glowing reef. The completion card 
     thinning to a soft edge
 - **Pip's family:** the same design. They swim as a tidy, staggered school, all facing the same
   way.
-- **Octopus:** orange-red with lighter mottling and small spots, a big rounded head tilted back,
-  gold eyes with horizontal slit pupils, a siphon ring on the cheek, and eight skinned tentacles
-  with pale undersides, white suckers and spiral-curled tips. It hides behind a rock.
+- **Octopus:** modelled on the reference:
+  - bright red-orange with lighter mottling and small darker dots
+  - a big rounded mantle tilted back
+  - gold eyes with horizontal slit pupils, set in ringed sockets, and a siphon ring on the cheek
+  - eight thick arms with pale pink undersides lined with real sucker discs (pink centres, white
+    rims), thinning into spiral-curled tips
+
+  Each arm follows a path (`armPath` in `actors/creatures.js`) instead of bending blindly, and its
+  suckers face the inside of every bend. The octopus first peeks over its rock, then rises onto it:
+  - most arms drape over the edge, hugging the rock's real surface (found by casting rays at it),
+    and curl away at the tips
+  - one arm is raised and curled beside its head
+  - the arms rear up, strike, tangle or wrap Pip, depending on the answer
 - **Predator:** a big, dark, speckled deep-sea fish with glowing eyes, a hinged jaw and teeth. No
   lure or antenna.
 - **Jellyfish (scenery only):** pulsing translucent bells with softly waving tentacles.
@@ -175,16 +186,20 @@ used for effects.
 
 **Narration**
 
-The opening story is read aloud in a calm, documentary-style voice, in sync with the captions:
-- It uses the device's own speech synthesis, so there are no audio files, nothing to download,
-  and it works offline. It picks the best English narrator voice available (natural or enhanced
-  voices first, British male preferred), slowed slightly and pitched a touch lower.
-- The intro waits at natural pauses for the narrator to finish a line, so captions and voice
+A warm, playful storyteller reads the opening story and then the welcome card, including how to
+play. Captions show the same words. The full script, with an emotional direction for each line,
+is in `src/data/narration.js` and `design/narration-script.md`.
+- **Recorded lines:** any line with a recording (listed in `NARRATION_FILES`, files in
+  `public/audio/narration/`) plays that clip.
+- **Other lines:** the device's speech voice reads them, choosing the friendliest English voice
+  available, slightly brighter. Pip's quoted thoughts ("What is this shiny thing?") are higher
+  and bouncier.
+- **Staying in sync:** the intro waits at natural pauses for the narrator, so captions and voice
   never drift apart.
-- Skip intro stops the voice, pause pauses it, and mute silences it. Settings has a "Narrator
-  reads the story" switch. Automated test runs stay silent.
-- Voices differ by device. A recorded or studio-generated narration track would sound the same
-  everywhere; that is an optional upgrade.
+- **Controls:** Skip intro and "Let's swim!" stop the voice, pause pauses it, and mute silences it.
+  Settings has a "Narrator reads the story" switch. Automated test runs stay silent.
+- **Limits of device voices:** they cannot sound truly expressive, so recorded, expressive
+  narration is the intended final form.
 
 ## 4. Mobile interface plan (portrait first)
 
@@ -205,7 +220,7 @@ The opening story is read aloud in a calm, documentary-style voice, in sync with
 - **Question sheet (bottom, minimal):** a frosted white sheet within thumb reach. It holds only:
   - a quiet topic label (coloured dot) with a small "Skip (test)" link on the same row
   - the question
-  - a 2 × 2 grid of pastel answer cards, each at least 60 px tall
+  - a 2 × 2 grid of white answer cards, each at least 60 px tall
 
   The 1–4 key badges show only on devices with a keyboard or mouse. The 3D scene is framed
   between the two panels, so Pip and the danger stay visible.
@@ -219,7 +234,7 @@ The opening story is read aloud in a calm, documentary-style voice, in sync with
   - Wrong: the chosen card turns rose with a ✗, the correct card turns sea-green with a ✓, and a
     rose card appears inside the sheet with the explanation and **Try another question**. Feedback always uses icons
     and text, never colour alone.
-- **Game Over and completion:** frosted cards with pastel stat tiles and a glossy coral primary
+- **Game Over and completion:** frosted cards and a glossy coral primary
   button.
 - **Fallbacks:** on low visual quality, with "reduce transparency" on, or in browsers without
   backdrop blur, the panels become solid instead of frosted. (An earlier dark "Sea glass" version is

@@ -338,12 +338,10 @@ button, select { font: inherit; }
 .quiz__answers { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .quiz--stack .quiz__answers { grid-template-columns: 1fr; }
 
-/* Answers: four soft pastels (sky, peach, lilac, sand); the press ring is a deeper shade of each. */
+/* Answers: one calm style for all four. Colour only means something: coral is your tap (the
+   press ring), sea green is right, rose is wrong. The playfulness is in the motion. */
 .answer {
-  --tint: #e6f4ff;
-  --tint-press: #d3ebfd;
-  --edge: #bcdcf5;
-  --ring: #2b8fd9;
+  --ring: #f2734c;
   position: relative;
   min-height: 62px;
   padding: 10px 28px 10px 10px;
@@ -353,8 +351,8 @@ button, select { font: inherit; }
   text-align: left;
   border-radius: 20px;
   border: 0;
-  background: linear-gradient(180deg, #ffffff 0%, var(--tint) 100%);
-  box-shadow: inset 0 1px 0 #fff, inset 0 0 0 1.5px var(--edge), 0 4px 12px rgba(4, 34, 56, 0.08);
+  background: #fff;
+  box-shadow: inset 0 0 0 1.5px #dce9ef, 0 3px 10px rgba(4, 34, 56, 0.06);
   color: var(--ink);
   font-size: 17px;
   font-weight: 600;
@@ -362,12 +360,9 @@ button, select { font: inherit; }
   cursor: pointer;
   transition: transform 340ms var(--spring), background 180ms ease, box-shadow 180ms ease, opacity 220ms ease;
 }
-.answer:nth-child(2) { --tint: #ffece2; --tint-press: #ffdccb; --edge: #ffcdb5; --ring: #e8673d; }
-.answer:nth-child(3) { --tint: #f0ebff; --tint-press: #e2d9ff; --edge: #d5cafb; --ring: #7a5ce0; }
-.answer:nth-child(4) { --tint: #fff3d9; --tint-press: #ffe7b5; --edge: #f6d89a; --ring: #d0870f; }
-.answer.is-pressing:not(:disabled) { background: var(--tint-press); }
+.answer.is-pressing:not(:disabled) { background: #fff5f1; box-shadow: inset 0 0 0 1.5px #ffcdb9, 0 3px 10px rgba(4, 34, 56, 0.06); }
 @media (hover: hover) {
-  .answer:hover:not(:disabled) { background: linear-gradient(180deg, #ffffff 0%, var(--tint-press) 100%); }
+  .answer:hover:not(:disabled) { background: #f7fbfd; }
 }
 .answer:disabled { cursor: default; }
 .answer__key {
@@ -377,9 +372,8 @@ button, select { font: inherit; }
   display: grid;
   place-items: center;
   border-radius: 50%;
-  background: #fff;
-  box-shadow: inset 0 0 0 1.5px var(--edge);
-  color: var(--ring);
+  background: #f1f6f9;
+  color: var(--ink-soft);
   font-size: 13px;
   font-weight: 700;
 }

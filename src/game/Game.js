@@ -15,6 +15,7 @@ import { FX } from './gfx/fx.js';
 import { globalUniforms, GlowPoints } from './gfx/materials.js';
 import { AudioFX } from './audio.js';
 import { Narrator } from './narrator.js';
+import { NARRATION } from '../data/narration.js';
 import { UI } from './ui/ui.js';
 import { QuestionDeck } from './logic/quiz.js';
 import { RunState } from './logic/run.js';
@@ -501,7 +502,9 @@ export class Game {
     this.ui.hideCaption();
     this._afterIntro(completed);
     this.state = 'rules';
+    this.narrator.say(NARRATION.welcome, 'welcome'); // the welcome card and how to play, read aloud
     await this.ui.rules();
+    this.narrator.stop();
     if (this.state !== 'rules') return;
     this.audio.tap();
     this.beginJourney();
@@ -539,7 +542,7 @@ export class Game {
     school.snapTo(_v2.copy(pip.position).add(schoolOffset));
     school.fish.forEach((f) => f.vel.set(0, 0, -3.8));
     this.rig.setShot({ target: pip.group, offset: new THREE.Vector3(-1.4, 0.5, 0), yaw: 1.5, pitch: 0.06, radius: 5.4, rate: 2.5, rotRate: 1 }, true);
-    this.narrate('Deep in the ocean, little Pip swam with its family — all together, all in one direction.');
+    this.narrate('intro1');
     await this.sched.tween(5, () => school.center.copy(pip.position).add(schoolOffset));
 
     // 2. Curiosity: something shiny on the sea floor — gold coins and an old treasure chest.
@@ -551,7 +554,7 @@ export class Game {
     treasure.visible = true;
     const coinSpot = treasure.position.clone().add(new THREE.Vector3(-0.2, 0.75, 1.3));
     await this.narrationCatchUp();
-    this.narrate('But Pip was a curious little fish… what was that shining on the sea floor?');
+    this.narrate('intro2');
     pip.setExpression('hopeful');
     pip.lookOverride = [0.4, -0.5];
     await this.sched.tween(1.6, (k, dt) => {
@@ -581,7 +584,7 @@ export class Game {
       schoolMove(raw * 3.4 - schoolT);
     });
     await this.narrationCatchUp();
-    this.narrate('Gold coins from an old sunken treasure chest! Pip had never seen anything so shiny.');
+    this.narrate('intro3');
     pip.lookOverride = [0, -0.6];
     this.hoverAt(pip.position.clone(), new THREE.Vector3(0.2, -0.5, -1));
     this.rig.setShot({ target: treasure, offset: new THREE.Vector3(-0.2, 0.7, 0.6), yaw: 0.8, pitch: 0.28, radius: 2.6, rate: 2, rotRate: 0.8 });
@@ -605,7 +608,7 @@ export class Game {
     band.target = 0;
     this.streaks.target = 0;
     await this.narrationCatchUp();
-    this.narrate('Suddenly, a powerful current came roaring down the reef!');
+    this.narrate('intro4');
     this.audio.roar(8.5);
     // Wide shot from behind Pip: Pip down by the treasure, the family waiting further ahead.
     this.rig.setShot({ target: pip.group, offset: new THREE.Vector3(-0.4, 0.5, -2.6), yaw: 0.1, pitch: 0.26, radius: 4.8, rate: 2.2, rotRate: 1.5 }, true);
@@ -684,7 +687,7 @@ export class Game {
         if (phase === 0 && raw >= 0.3) {
           // …then Pip fights back, facing the family, but is dragged away regardless.
           phase = 1;
-          this.narrate('The current swept Pip far, far away from its family!');
+          this.narrate('intro5');
           sw.minSpeedForHeading = 1e9;
           sw.faceDir = new THREE.Vector3(0.6, 0, -1);
           sw.effort = 1.3;
@@ -729,7 +732,7 @@ export class Game {
     school.setVisible(false);
     this.seaLife.quiet = true;
     await this.narrationCatchUp();
-    this.narrate('When the water calmed, Pip’s family was nowhere to be seen.');
+    this.narrate('intro6');
     this.audio.lonely();
     // High, wide shot: one tiny fish alone on the sand.
     this.rig.setShot({ target: pip.group, offset: new THREE.Vector3(0, 0, 0), yaw: Math.PI - 0.1, pitch: 1.12, radius: 5.2, rate: 1.5, rotRate: 0.6 }, true);
@@ -746,7 +749,7 @@ export class Game {
     });
     // Pip calls out with a flash of its lights… and nobody answers.
     await this.narrationCatchUp();
-    this.narrate('Pip called out for them… but no one answered.');
+    this.narrate('intro7');
     this.rig.setShot({ target: pip.group, offset: new THREE.Vector3(0, 0.25, 0), yaw: Math.PI + 0.5, pitch: 0.3, radius: 3.0, rate: 1.4, rotRate: 0.9 });
     sw.faceDir = new THREE.Vector3(0.25, 0, -1);
     pip.lookOverride = [0, 0.3];
@@ -770,7 +773,7 @@ export class Game {
     });
     // Courage: the water clears a little, and the journey begins.
     await this.narrationCatchUp();
-    this.narrate('Home is far away, past dangerous waters. Pip needs your help!');
+    this.narrate('intro8');
     pip.setExpression('determined');
     this.ocean.murkTarget = 0;
     this.seaLife.quiet = false;
@@ -786,10 +789,11 @@ export class Game {
     await this.narrationCatchUp(); // let the narrator finish before the welcome card
   }
 
-  /** Show a story caption and have the narrator read it aloud. */
-  narrate(text) {
+  /** Show a story caption and have the narrator read it aloud (script in data/narration.js). */
+  narrate(id) {
+    const text = NARRATION[id];
     this.ui.caption(text);
-    this.narrator.say(text);
+    this.narrator.say(text, id);
   }
 
   /** Wait (on the game clock, so skip/pause still work) until the narrator has caught up. */

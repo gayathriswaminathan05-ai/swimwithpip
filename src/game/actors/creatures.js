@@ -3,194 +3,324 @@ import { paint, paintVerts, merge, finGeometry, warp, mix } from '../gfx/geometr
 import { litMaterial, makeSwimUniforms, makeSwayUniforms, GlowPoints } from '../gfx/materials.js';
 import { Swimmer } from './fish.js';
 import { damp, lerp, clamp, fbm3, TAU } from '../core/util.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 const _v = new THREE.Vector3();
 const _q = new THREE.Quaternion();
 const _Y = new THREE.Vector3(0, 1, 0);
 
 // ---------------------------------------------------------------------------
-// Tentacle: a tapered cylinder skinned to a chain of bones. Curling each bone a little produces
-// smooth, flowing curls; a travelling sine wave makes it undulate.
+// Tentacle: a tapered arm with a pale underside lined with real sucker discs, skinned to a chain of
+// bones. Instead of bending blindly, an arm follows a path (a list of points in its parent's space):
+// over a rock edge, down a face and into a spiral curl. Each bone is aligned to the path, and the
+// suckers face the inside of every bend, so curled tips show their suckers like the reference.
+
+const ARM = { top: 0xee4a22, light: 0xff8a4a, dot: 0xc93a18, under: 0xffd3c6, rim: 0xfff4ef, cup: 0xf4a090 };
+const _m = new THREE.Matrix4();
+const _x = new THREE.Vector3();
+const _z = new THREE.Vector3();
 
 export class Tentacle {
-  constructor({ length = 5, r0 = 0.32, r1 = 0.05, segs = 10, color = 0xe8552e, under = 0xffcdb8, material = null } = {}) {
-    const geo = new THREE.CylinderGeometry(r1, r0, length, 14, segs * 3, false);
-    geo.translate(0, length / 2, 0);
-    const pos = geo.attributes.position;
-    const n = pos.count;
-    const colors = new Float32Array(n * 3);
-    const ci = new THREE.Color(color);
-    const cLight = new THREE.Color(0xf6874f);
-    const cDark = new THREE.Color(0xc23c1c);
-    const cu = new THREE.Color(under);
-    const cSucker = new THREE.Color(0xfff4ee);
+  constructor({ length = 6.4, r0 = 0.36, r1 = 0.03, segs = 22, radial = 16, material = null } = {}) {
+    this.length = length;
+    this.segs = segs;
+    const segH = length / segs;
+    this.segH = segH;
+    const radiusAt = (k) => r1 + (r0 - r1) * (1 - k) ** 0.8; // stays thick, then thins to the tip
+
+    // Tube: rings along +Y, closed at the tip. The underside is -X.
+    const rings = segs * 3;
+    const pos = [];
+    const col = [];
+    const idx = [];
+    const cTop = new THREE.Color(ARM.top);
+    const cLight = new THREE.Color(ARM.light);
+    const cDot = new THREE.Color(ARM.dot);
+    const cUnder = new THREE.Color(ARM.under);
+    const c = new THREE.Color();
+    for (let r = 0; r <= rings; r++) {
+      const k = r / rings;
+      const y = length * k;
+      const rad = radiusAt(k);
+      for (let j = 0; j < radial; j++) {
+        const th = (j / radial) * TAU;
+        const x = Math.cos(th) * rad;
+        const z = Math.sin(th) * rad;
+        pos.push(x, y, z);
+        const inside = -Math.cos(th); // 1 on the underside
+        const mott = fbm3(x * 4 + y * 0.9, y * 1.7, z * 4, 2);
+        c.copy(cTop).lerp(cLight, clamp((mott - 0.42) * 2.4, 0, 1));
+        if (Math.sin(y * 6.1 + th * 3) * Math.sin(y * 2.3 - th * 5) > 0.84) c.lerp(cDot, 0.55);
+        c.lerp(cUnder, smooth(0.05, 0.4, inside));
+        col.push(c.r, c.g, c.b);
+      }
+    }
+    const tipIdx = pos.length / 3;
+    pos.push(0, length + r1 * 0.6, 0);
+    col.push(cTop.r, cTop.g, cTop.b);
+    for (let r = 0; r < rings; r++) {
+      for (let j = 0; j < radial; j++) {
+        const a0 = r * radial + j, a1 = r * radial + ((j + 1) % radial);
+        const b0 = a0 + radial, b1 = a1 + radial;
+        idx.push(a0, b0, a1, a1, b0, b1);
+      }
+    }
+    for (let j = 0; j < radial; j++) idx.push(rings * radial + j, tipIdx, rings * radial + ((j + 1) % radial));
+    const tube = new THREE.BufferGeometry();
+    tube.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    tube.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+    tube.setIndex(idx);
+    tube.computeVertexNormals();
+
+    // Suckers: little cups on the underside, pink in the middle with a white rim. Two staggered
+    // rows where the arm is thick, one row toward the tip.
+    const cups = [tube];
+    const cRim = new THREE.Color(ARM.rim);
+    const cCup = new THREE.Color(ARM.cup);
+    let y = length * 0.05;
+    let n = 0;
+    while (y < length * 0.96) {
+      const rad = radiusAt(y / length);
+      const rs = rad * 0.44;
+      const rows = rad > 0.11 ? [n % 2 ? 0.42 : -0.42] : [0];
+      for (const off of rows) {
+        const a = Math.PI + off;
+        const nrm = new THREE.Vector3(Math.cos(a), 0, Math.sin(a));
+        const cup = new THREE.CylinderGeometry(rs, rs * 0.92, rs * 0.55, 12, 1, false);
+        cup.deleteAttribute('uv');
+        const cpos = cup.attributes.position;
+        const cc = [];
+        for (let i = 0; i < cpos.count; i++) {
+          const d = Math.hypot(cpos.getX(i), cpos.getZ(i)) / rs;
+          const isTop = cpos.getY(i) > 0;
+          const cl = isTop && d < 0.55 ? cCup : cRim;
+          cc.push(cl.r, cl.g, cl.b);
+        }
+        cup.setAttribute('color', new THREE.Float32BufferAttribute(cc, 3));
+        cup.applyQuaternion(_q.setFromUnitVectors(_Y, nrm));
+        cup.translate(nrm.x * (rad * 0.93), y, nrm.z * (rad * 0.93));
+        cups.push(cup);
+      }
+      y += rs * 2.35;
+      n++;
+    }
+    const geo = mergeGeometries(cups, false);
+    // Skin every vertex to the bone at its height.
+    const P = geo.attributes.position;
     const skinIndex = [];
     const skinWeight = [];
-    const segH = length / segs;
-    for (let i = 0; i < n; i++) {
-      const x = pos.getX(i);
-      const y = pos.getY(i);
-      const z = pos.getZ(i);
-      const rad = Math.hypot(x, z) || 1;
-      // The underside (-X, the inside of the curl) is pale with rows of white suckers.
-      const inside = -x / rad;
-      const c = new THREE.Color();
-      if (inside > 0.35) {
-        const row = Math.abs(Math.sin(y * 13.0)) > 0.72;
-        const lane = Math.abs(z / rad) < 0.55;
-        c.copy(row && lane ? cSucker : cu);
-      } else {
-        const mott = fbm3(x * 3 + y * 0.8, y * 1.6, z * 3, 2);
-        c.copy(ci).lerp(cLight, Math.max(0, mott - 0.45) * 2.2);
-        if (Math.sin(y * 7.3 + z * 9) * Math.sin(x * 11 - y * 3) > 0.82) c.lerp(cDark, 0.65);
-        if (inside > 0.15) c.lerp(cu, (inside - 0.15) * 2.5);
-      }
-      colors[i * 3] = c.r;
-      colors[i * 3 + 1] = c.g;
-      colors[i * 3 + 2] = c.b;
-      const b = Math.max(0, Math.min(segs - 1, Math.floor(y / segH + 1e-6)));
-      const w = clamp((y - b * segH) / segH, 0, 1);
+    const glow = new Float32Array(P.count);
+    for (let i = 0; i < P.count; i++) {
+      const yy = clamp(P.getY(i), 0, length);
+      const b = Math.max(0, Math.min(segs - 1, Math.floor(yy / segH + 1e-6)));
+      const w = clamp((yy - b * segH) / segH, 0, 1);
       skinIndex.push(b, Math.min(b + 1, segs - 1), 0, 0);
       skinWeight.push(1 - w, w, 0, 0);
     }
-    geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
     geo.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(skinIndex, 4));
     geo.setAttribute('skinWeight', new THREE.Float32BufferAttribute(skinWeight, 4));
+    geo.setAttribute('aGlow', new THREE.BufferAttribute(glow, 1));
+
     this.bones = [];
     let prev = null;
-    for (let b = 0; b < segs; b++) {
+    for (let i = 0; i < segs; i++) {
       const bone = new THREE.Bone();
-      bone.position.y = b === 0 ? 0 : segH;
+      bone.position.y = i === 0 ? 0 : segH;
       if (prev) prev.add(bone);
       this.bones.push(bone);
       prev = bone;
     }
-    const mat = material || new THREE.MeshLambertMaterial({ vertexColors: true });
-    this.mesh = new THREE.SkinnedMesh(geo, mat);
+    this.mesh = new THREE.SkinnedMesh(geo, material || litMaterial({}));
     this.mesh.add(this.bones[0]);
     this.mesh.bind(new THREE.Skeleton(this.bones));
     this.mesh.frustumCulled = false;
-    // Generous fixed bounds (the tentacle bends a lot); avoids per-frame skinned bounds work.
     this.mesh.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, length / 2, 0), length * 1.1);
     this.root = new THREE.Group();
     this.root.add(this.mesh);
-    this.length = length;
-    this.segs = segs;
-    this.curl = 0.12;
-    this.curlTarget = 0.12;
-    this.wave = 0.22;
-    this.waveTarget = 0.22;
-    this.speed = 1.8;
-    this.phase = Math.random() * TAU;
-    this.aimQ = new THREE.Quaternion();
-    this.aimRate = 2;
-    this.twist = 0;
-    this.tipCurl = 1.0; // tips always curl into a little spiral
+
+    // Path following state.
+    this.rate = 4;
+    this._p = Array.from({ length: segs + 1 }, () => new THREE.Vector3());
+    this._d = Array.from({ length: segs }, () => new THREE.Vector3());
+    this._Q = Array.from({ length: segs }, () => new THREE.Quaternion());
+    this._local = Array.from({ length: segs }, () => new THREE.Quaternion());
+    this._curve = null;
+    this._under = new THREE.Vector3(0, -1, 0);
   }
 
-  /** Point the tentacle's base toward a world-space point. */
-  aimAt(world, rate) {
-    const parent = this.root.parent;
-    if (!parent) return;
-    parent.updateWorldMatrix(true, false);
-    _v.copy(world);
-    parent.worldToLocal(_v).sub(this.root.position).normalize();
-    this.aimQ.setFromUnitVectors(_Y, _v);
-    if (rate !== undefined) this.aimRate = rate;
+  /**
+   * Follow a path given in the parent's space; the first point should be the arm's root.
+   * underHint: which way the suckers face at the root. rate: how quickly the arm gets there.
+   */
+  setPath(points, underHint, rate) {
+    if (!this._curve || this._curve.points.length !== points.length) this._curve = new THREE.CatmullRomCurve3(points.map((p) => p.clone()), false, 'centripetal');
+    else this._curve.points.forEach((p, i) => p.copy(points[i]));
+    if (underHint) this._under.copy(underHint);
+    if (rate !== undefined) this.rate = rate;
+    this._solve();
   }
 
-  aimDir(localDir, rate) {
-    this.aimQ.setFromUnitVectors(_Y, _v.copy(localDir).normalize());
-    if (rate !== undefined) this.aimRate = rate;
-  }
-
-  snapAim() {
-    this.root.quaternion.copy(this.aimQ);
-  }
-
-  update(dt, t) {
-    this.curl = lerp(this.curl, this.curlTarget, damp(4, dt));
-    this.wave = lerp(this.wave, this.waveTarget, damp(3, dt));
-    const n = this.bones.length;
-    for (let i = 0; i < n; i++) {
-      const k = i / (n - 1);
-      const b = this.bones[i];
-      const tip = Math.max(0, (k - 0.62) / 0.38);
-      b.rotation.z = this.curl * (0.4 + k * 1.2) + this.tipCurl * tip * tip * 1.6 + this.wave * Math.sin(t * this.speed + this.phase - i * 0.55) * (0.3 + k);
-      b.rotation.x = this.wave * 0.6 * Math.sin(t * this.speed * 0.73 + this.phase * 1.7 - i * 0.45) * (0.2 + k);
+  _solve() {
+    const curve = this._curve;
+    const L = curve.getLength();
+    const segs = this.segs;
+    const last = new THREE.Vector3();
+    const lastT = new THREE.Vector3();
+    curve.getPointAt(1, last);
+    curve.getTangentAt(1, lastT);
+    for (let i = 0; i <= segs; i++) {
+      const s = i * this.segH;
+      if (s <= L) curve.getPointAt(s / L, this._p[i]);
+      else this._p[i].copy(last).addScaledVector(lastT, s - L);
     }
-    this.root.quaternion.slerp(this.aimQ, damp(this.aimRate, dt));
+    const N = _x.copy(this._under);
+    for (let i = 0; i < segs; i++) {
+      const d = this._d[i].subVectors(this._p[i + 1], this._p[i]).normalize();
+      // Suckers face the inside of each bend; on straight stretches keep the previous facing.
+      if (i > 0) {
+        const kv = _z.subVectors(d, this._d[i - 1]);
+        if (kv.lengthSq() > 0.0016) {
+          kv.addScaledVector(d, -kv.dot(d)).normalize();
+          N.lerp(kv, 0.6);
+        }
+      }
+      N.addScaledVector(d, -N.dot(d)).normalize();
+      // Basis: Y along the arm, X away from the suckers (they sit on -X).
+      const X = _v.copy(N).negate();
+      const Z = new THREE.Vector3().crossVectors(X, d);
+      _m.makeBasis(X, d, Z);
+      this._Q[i].setFromRotationMatrix(_m);
+    }
+    for (let i = 0; i < segs; i++) {
+      if (i === 0) this._local[0].identity();
+      else this._local[i].copy(this._Q[i - 1]).invert().multiply(this._Q[i]);
+    }
   }
 
-  /** World position of the tentacle tip. */
+  /** Jump straight to the current path. */
+  snap() {
+    if (!this._curve) return;
+    this.root.position.copy(this._p[0]);
+    this.root.quaternion.copy(this._Q[0]);
+    this.bones.forEach((b, i) => b.quaternion.copy(this._local[i]));
+  }
+
+  update(dt) {
+    if (!this._curve) return;
+    const k = damp(this.rate, dt);
+    this.root.position.lerp(this._p[0], k);
+    this.root.quaternion.slerp(this._Q[0], k);
+    this.bones.forEach((b, i) => b.quaternion.slerp(this._local[i], k));
+  }
+
+  /** World position of the tip. */
   tip(out = new THREE.Vector3()) {
-    const last = this.bones[this.bones.length - 1];
-    last.updateWorldMatrix(true, false);
-    return out.set(0, this.length / this.segs, 0).applyMatrix4(last.matrixWorld);
+    const lastBone = this.bones[this.bones.length - 1];
+    lastBone.updateWorldMatrix(true, false);
+    return out.set(0, this.segH, 0).applyMatrix4(lastBone.matrixWorld);
   }
 }
 
+function smooth(e0, e1, x) {
+  const t = clamp((x - e0) / (e1 - e0), 0, 1);
+  return t * t * (3 - 2 * t);
+}
+
+/**
+ * Builds an arm path: root → via points → end, then a spiral curl that uses up the rest of the
+ * arm's length. curlSide is the direction the tip curls toward (the curl's plane contains it and
+ * the arm's direction at the end). All points share one space.
+ */
+export function armPath(points, length, { curlR = 0.6, curlSide = new THREE.Vector3(1, 0, 0), maxTurns = 1.8 } = {}) {
+  const pts = points.map((p) => p.clone());
+  let used = 0;
+  for (let i = 1; i < pts.length; i++) used += pts[i].distanceTo(pts[i - 1]);
+  let left = length - used;
+  if (left < 0.2) return pts;
+  const end = pts[pts.length - 1];
+  const t = new THREE.Vector3().subVectors(end, pts[pts.length - 2]).normalize();
+  const u = curlSide.clone().addScaledVector(t, -curlSide.dot(t)).normalize(); // toward the centre
+  const centre = end.clone().addScaledVector(u, curlR);
+  // Spiral: start at `end` heading along t, wind toward the centre with a shrinking radius.
+  const steps = 24;
+  const total = TAU * maxTurns;
+  let prev = end.clone();
+  for (let i = 1; i <= steps && left > 0; i++) {
+    const th = (i / steps) * total;
+    const r = curlR * (1 - 0.72 * (i / steps));
+    const p = centre.clone().addScaledVector(u, -Math.cos(th) * r).addScaledVector(t, Math.sin(th) * r);
+    left -= p.distanceTo(prev);
+    pts.push(p);
+    prev = p;
+  }
+  return pts;
+}
+
 // ---------------------------------------------------------------------------
-// Octopus: a friendly-looking but sneaky orange-red octopus — big rounded head tilted back, a gold
-// eye with a horizontal slit pupil on each side, a little siphon ring on the cheek, and eight
-// skinned tentacles with pale undersides, white suckers and curled tips.
+// Octopus (after the reference): bright red-orange with light mottling and small darker dots, a big
+// rounded mantle tilted back, gold eyes with dark horizontal slits in raised sockets, a siphon ring,
+// and eight arms with pale pink undersides lined with suckers, curling into spirals.
 
 export class Octopus {
   constructor() {
     this.group = new THREE.Group();
-    const base = new THREE.Color(0xe8552e);
-    const light = new THREE.Color(0xf6874f);
-    const dark = new THREE.Color(0xc23c1c);
-    const pale = new THREE.Color(0xffcdb8);
+    const base = new THREE.Color(ARM.top);
+    const light = new THREE.Color(ARM.light);
+    const dot = new THREE.Color(ARM.dot);
+    const pale = new THREE.Color(ARM.under);
     const mottled = (p, n) => {
-      const c = base.clone().lerp(light, Math.max(0, fbm3(p.x * 1.6, p.y * 1.6, p.z * 1.6, 3) - 0.42) * 2);
-      if (Math.sin(p.x * 9 + p.y * 4) * Math.sin(p.z * 8 - p.y * 5) > 0.86) c.lerp(dark, 0.6);
-      if (n.y < -0.4) c.lerp(pale, (-n.y - 0.4) * 0.9);
+      const c = base.clone().lerp(light, clamp((fbm3(p.x * 1.7, p.y * 1.7, p.z * 1.7, 3) - 0.4) * 2.2, 0, 1));
+      if (Math.sin(p.x * 9 + p.y * 4) * Math.sin(p.z * 8 - p.y * 5) > 0.88) c.lerp(dot, 0.5);
+      if (n.y < -0.45) c.lerp(pale, (-n.y - 0.45) * 0.8);
       return c;
     };
-    // Mantle (the big head bulb), tilted back and up behind the eyes.
-    const mantle = new THREE.SphereGeometry(1.5, 40, 30);
-    mantle.scale(1.0, 0.92, 1.32);
-    mantle.rotateX(0.6);
-    mantle.translate(0, 2.05, -1.25);
+    // Mantle: the big rounded bulb, tilted back and up behind the eyes.
+    const mantle = new THREE.SphereGeometry(1.45, 44, 32);
+    mantle.scale(1.0, 0.9, 1.35);
+    mantle.rotateX(0.7);
+    mantle.translate(0, 2.0, -1.2);
     const parts = [paintVerts(mantle, mottled)];
     // Head between the mantle and the arms.
-    const head = new THREE.SphereGeometry(0.98, 32, 24);
-    head.scale(1.05, 0.95, 1.0);
-    head.translate(0, 0.95, 0.15);
+    const head = new THREE.SphereGeometry(0.95, 36, 26);
+    head.scale(1.08, 0.92, 1.0);
+    head.translate(0, 0.92, 0.12);
     parts.push(paintVerts(head, mottled));
-    // Eye sockets (bumps that hold the eyes).
+    // Raised eye sockets with a ring around each eye, like the reference.
     for (const side of [-1, 1]) {
-      const sock = new THREE.SphereGeometry(0.36, 20, 16);
-      sock.translate(side * 0.74, 1.28, 0.42);
+      const sock = new THREE.SphereGeometry(0.38, 24, 18);
+      sock.translate(side * 0.72, 1.3, 0.42);
       parts.push(paintVerts(sock, mottled));
     }
-    // Siphon ring on the cheek, as in the reference.
-    const siphon = new THREE.TorusGeometry(0.22, 0.07, 10, 22);
+    // Siphon ring on the cheek.
+    const siphon = new THREE.TorusGeometry(0.2, 0.065, 10, 24);
     siphon.rotateY(Math.PI / 2);
-    siphon.translate(-0.98, 0.78, -0.05);
-    parts.push(paint(siphon, 0xd04822));
-    this.mantle = new THREE.Mesh(merge(parts), litMaterial({ emissive: 0x521606 }));
+    siphon.translate(-0.99, 0.8, -0.05);
+    parts.push(paint(siphon, 0xd8441f));
+    this.mantle = new THREE.Mesh(merge(parts), litMaterial({ emissive: 0x7a2509 }));
     this.group.add(this.mantle);
 
-    // Eyes: gold with a dark horizontal slit; lids can narrow or close them.
+    // Eyes: gold iris, dark horizontal slit, a darker ring around, and lids that narrow or close.
     this.eyes = [];
     const eyeGeo = new THREE.SphereGeometry(0.27, 24, 18);
-    const eyeMat = new THREE.MeshBasicMaterial({ color: 0xf3c54b });
-    const slitGeo = new THREE.SphereGeometry(0.2, 16, 8);
-    slitGeo.scale(1, 0.24, 0.35);
+    const eyeMat = new THREE.MeshBasicMaterial({ color: 0xf7c94a });
+    const slitGeo = new THREE.SphereGeometry(0.21, 18, 8);
+    slitGeo.scale(1, 0.22, 0.32);
     const slitMat = new THREE.MeshBasicMaterial({ color: 0x24140a });
+    const ringGeo = new THREE.TorusGeometry(0.3, 0.045, 10, 28);
+    const ringMat = new THREE.MeshLambertMaterial({ color: 0xc8401c, emissive: 0x3a1004 });
     const lidGeo = new THREE.SphereGeometry(0.3, 24, 12, 0, TAU, 0, Math.PI / 2);
-    const lidMat = new THREE.MeshLambertMaterial({ color: 0xe0522c });
+    const lidMat = new THREE.MeshLambertMaterial({ color: 0xe9542a, emissive: 0x4a1606 });
     for (const side of [-1, 1]) {
       const eye = new THREE.Group();
-      eye.position.set(side * 0.82, 1.3, 0.5);
-      eye.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), new THREE.Vector3(side * 0.75, 0.1, 0.65).normalize());
+      eye.position.set(side * 0.8, 1.32, 0.52);
+      eye.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), new THREE.Vector3(side * 0.75, 0.12, 0.65).normalize());
       const ball = new THREE.Mesh(eyeGeo, eyeMat);
       const slit = new THREE.Mesh(slitGeo, slitMat);
       slit.position.z = 0.2;
+      const ring = new THREE.Mesh(ringGeo, ringMat);
+      ring.position.z = 0.1;
       const lid = new THREE.Mesh(lidGeo, lidMat);
-      eye.add(ball, slit, lid);
+      eye.add(ball, slit, ring, lid);
       this.group.add(eye);
       this.eyes.push({ eye, slit, lid });
     }
@@ -198,23 +328,22 @@ export class Octopus {
     this.eyeNarrow = 0;
     this.halo = new GlowPoints(
       [
-        { x: -0.92, y: 1.3, z: 0.62, size: 0.9, color: 0xffd36b },
-        { x: 0.92, y: 1.3, z: 0.62, size: 0.9, color: 0xffd36b },
+        { x: -0.92, y: 1.32, z: 0.64, size: 0.8, color: 0xffd36b },
+        { x: 0.92, y: 1.32, z: 0.64, size: 0.8, color: 0xffd36b },
       ],
-      0.5,
+      0.45,
     );
     this.group.add(this.halo);
 
-    const tentMat = new THREE.MeshLambertMaterial({ vertexColors: true, emissive: 0x461205 });
+    // Eight arms around the base of the head. attach = root position; out = outward direction.
+    const armMat = litMaterial({ emissive: 0x76230a });
     this.tentacles = [];
     for (let i = 0; i < 8; i++) {
-      const a = (i / 8) * TAU + 0.2;
-      const t = new Tentacle({ length: 6.6 - (i % 2) * 0.5, r0: 0.36, r1: 0.04, segs: 12, material: tentMat });
-      t.root.position.set(Math.cos(a) * 0.68, 0.32, Math.sin(a) * 0.68 + 0.15);
-      t.baseDir = new THREE.Vector3(Math.cos(a) * 0.9, -0.35, Math.sin(a) * 0.9 + 0.35).normalize();
-      t.aimDir(t.baseDir);
-      t.snapAim();
-      t.phase = i * 0.9;
+      const a = (i / 8) * TAU + Math.PI / 8;
+      const t = new Tentacle({ length: 6.4 - (i % 2) * 0.4, r0: 0.42, r1: 0.03, segs: 22, material: armMat });
+      t.attach = new THREE.Vector3(Math.cos(a) * 0.62, 0.36, Math.sin(a) * 0.62 + 0.12);
+      t.out = new THREE.Vector3(Math.cos(a), 0, Math.sin(a));
+      t.index = i;
       this.group.add(t.root);
       this.tentacles.push(t);
     }
@@ -226,22 +355,17 @@ export class Octopus {
     this.eyeNarrow = narrow;
   }
 
-  /** Turn the slit pupils toward a world point. */
-  lookAt(world) {
-    this._lookAt = world;
-  }
-
   update(dt) {
     this.time += dt;
     const t = this.time;
     this.mantle.scale.set(1 + Math.sin(t * 1.1) * 0.025, 1 + Math.sin(t * 1.1 + 1) * 0.03, 1);
-    for (const tt of this.tentacles) tt.update(dt, t);
+    for (const tt of this.tentacles) tt.update(dt);
     const lid = clamp(1 - this.eyeOpen + this.eyeNarrow * 0.32, 0, 1);
     for (const e of this.eyes) {
       e.lid.rotation.x = -Math.PI / 2 + lid * Math.PI * 0.95;
       e.lid.visible = lid > 0.02;
     }
-    this.halo.opacity = 0.5 * this.eyeOpen;
+    this.halo.opacity = 0.45 * this.eyeOpen;
   }
 }
 
