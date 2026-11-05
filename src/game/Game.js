@@ -30,6 +30,8 @@ export const QUALITY = {
 };
 const QUALITY_ORDER = ['low', 'medium', 'high'];
 const SETTINGS_KEY = 'pip-way-home-settings';
+// Questions already asked on this device, oldest first, so each new game brings fresh ones.
+const SEEN_KEY = 'pip-way-home-seen-questions';
 const TITLE_S = -34;
 const TITLE_S_INTRO = TITLE_S - 20;
 const START_S = -8;
@@ -257,6 +259,30 @@ export class Game {
   // =====================================================================
   // Settings
   // =====================================================================
+  /** A question deck that skips questions this device has already seen in earlier games. */
+  _newDeck(difficulty) {
+    let seen = [];
+    // A fixed ?seed= (automated tests) keeps question order reproducible.
+    if (this.seed === undefined) {
+      try {
+        const stored = JSON.parse(localStorage.getItem(SEEN_KEY) || '[]');
+        if (Array.isArray(stored)) seen = stored;
+      } catch {
+        /* storage unavailable: every game simply starts fresh */
+      }
+    }
+    return new QuestionDeck(QUESTIONS, difficulty, this.seed, { seen });
+  }
+
+  _rememberQuestions() {
+    if (this.seed !== undefined) return;
+    try {
+      localStorage.setItem(SEEN_KEY, JSON.stringify(this.deck.seenList()));
+    } catch {
+      /* storage full or blocked: nothing to do */
+    }
+  }
+
   _save() {
     try {
       localStorage.setItem(SETTINGS_KEY, JSON.stringify(this.settings));
@@ -335,6 +361,7 @@ export class Game {
     this.run = new RunState(this.encounters.length);
     this.currentEnc = null;
     this.triggers = this._makeTriggers();
+    this.homeReached = false;
     this.zone = 0;
     this.audio.setZone(0);
 
@@ -485,7 +512,7 @@ export class Game {
     this.audio.tap();
     this.settings.difficulty = difficulty;
     this._save();
-    this.deck = new QuestionDeck(QUESTIONS, difficulty, this.seed);
+    this.deck = this._newDeck(difficulty);
     this.ui.hide('title');
     this.state = 'intro';
     this.updateLayout();
@@ -940,6 +967,7 @@ export class Game {
       enc.onHold?.(stage);
       this.rig.setShot(enc.holdShot(stage));
       const q = this.deck.next();
+      this._rememberQuestions();
       this.lastQuestion = q;
       const step = enc.isFinal
         ? `Final hurdle${enc.stages > 1 ? ` · part ${stage + 1} of ${enc.stages}` : ''}`
@@ -1017,24 +1045,36 @@ export class Game {
     const school = this.school;
     this.cameraMode = 'reunion';
     pip.setExpression('happy');
+    // A short, happy swirl together...
     this.ui.caption('Together again at last!', { small: false });
     this.rig.setShot({ target: pip.group, offset: new THREE.Vector3(0, 0.4, 0), yaw: 0.6, pitch: 0.3, radius: 6.5, rate: 2, rotRate: 0.5 });
-    // Orbit the camera slowly while the school swirls around Pip.
-    await this.sched.tween(4.5, (k) => {
-      this.rig.shot.yaw = 0.6 + k * 2.2;
+    this.sched.tween(2.5, (k) => (school.sync = k)).catch(() => {});
+    await this.sched.tween(3.2, (k) => {
+      this.rig.shot.yaw = 0.6 + k * 1.6;
     });
-    this.ui.caption('Together again, they swim home in perfect time.');
+    // ...then straight home: no long swim along the rest of the route.
+    this.audio.victory();
+    this.ui.fade(true, 500);
+    await this.sched.wait(0.55);
+    const s = HOME_S - 11;
+    this.route(s, _v);
+    pip.swimmer.teleport(_v, new THREE.Vector3(0, 0, -1));
+    this.pipS = s;
+    this.ocean.prime(s);
+    for (const t of this.triggers) if (t.s <= s + 4) t.done = true;
+    this.zone = this.ocean.zoneIndex(s);
+    this.audio.setZone(this.zone);
+    this.homeReached = true; // the progress bar shows the journey complete
+    this._refreshHUD(true);
+    school.snapTo(_v);
     school.mode = 'formation';
     school.anchor = pip.group;
-    this.sched.tween(2.5, (k) => (school.sync = k)).catch(() => {});
-    this.audio.victory();
-    this.cruiseSpeed = 5;
+    this.cruiseSpeed = 4;
     this.resumeCruise();
     this.cameraMode = 'reunion';
-    this.rig.setShot({ target: pip.group, offset: new THREE.Vector3(0, 0.8, 2.5), yaw: 1.2, pitch: 0.22, radius: 8.5, rate: 2, rotRate: 0.4 });
-    await this.sched.until(() => this.pipS >= HOME_S - 18);
-    this.rig.setShot({ target: pip.group, offset: new THREE.Vector3(0, 2, -6), yaw: 0.25, pitch: 0.55, radius: 13, rate: 1.2, rotRate: 0.35 });
+    this.rig.setShot({ target: pip.group, offset: new THREE.Vector3(0, 2, -6), yaw: 0.25, pitch: 0.55, radius: 13, rate: 1.2, rotRate: 0.35 }, true);
     this.ui.caption('Home at last.');
+    this.ui.fade(false, 700);
     await this.sched.until(() => this.pipS >= HOME_S - 4);
     this.cruiseSpeed = 0;
     this.hoverAt(pip.position.clone());
@@ -1089,7 +1129,7 @@ export class Game {
     this.route(START_S, _v);
     this.pip.swimmer.teleport(_v, new THREE.Vector3(0, 0, -1));
     this.ocean.prime(START_S);
-    this.deck = new QuestionDeck(QUESTIONS, this.settings.difficulty, this.seed);
+    this.deck = this._newDeck(this.settings.difficulty);
     this.state = 'playing';
     this.beginJourney();
     this.rig.snap();
@@ -1279,7 +1319,7 @@ export class Game {
     this.hudTimer = (this.hudTimer || 0) + dt;
     if (!force && this.hudTimer < 0.2) return;
     this.hudTimer = 0;
-    const frac = clamp(this.pipS / HOME_S, 0, 1);
+    const frac = this.homeReached ? 1 : clamp(this.pipS / HOME_S, 0, 1);
     this.ui.setProgress(frac, this.run.cleared, this.run.totalHurdles, ZONES[this.zone].name);
   }
 
@@ -1296,7 +1336,7 @@ export class Game {
     this.audio.unlock();
     this.resetWorld();
     this.school.setVisible(false);
-    this.deck = new QuestionDeck(QUESTIONS, difficulty, this.seed);
+    this.deck = this._newDeck(difficulty);
     const enc = this.encounters[index];
     const s = enc.s - enc.approachFrom - 3;
     this.route(s, _v);

@@ -88,6 +88,35 @@ test('deck: falls back gracefully when a pool runs out', () => {
   for (let i = 0; i < 10; i++) assert.ok(deck.next().id);
 });
 
+test('deck: a new game brings questions not seen in earlier games', () => {
+  for (const d of DIFFICULTIES) {
+    let seen = [];
+    const asked = new Set();
+    // Six full games in a row on one device: 72 questions per difficulty, 12 per game.
+    for (let game = 0; game < 6; game++) {
+      const deck = new QuestionDeck(QUESTIONS, d, 100 + game, { seen });
+      for (let i = 0; i < 12; i++) {
+        const q = deck.next();
+        assert.ok(!asked.has(q.id), `${d}: game ${game + 1} repeated ${q.id}`);
+        assert.equal(q.difficulty, d, 'remembering earlier games must not change the difficulty');
+        asked.add(q.id);
+      }
+      seen = deck.seenList();
+    }
+  }
+});
+
+test('deck: once every question has been seen it starts over, skipping the most recent ones', () => {
+  const medium = QUESTIONS.filter((q) => q.difficulty === 'medium').map((q) => q.id);
+  const recent = new Set(medium.slice(-12));
+  const deck = new QuestionDeck(QUESTIONS, 'medium', 5, { seen: medium });
+  for (let i = 0; i < 12; i++) {
+    const q = deck.next();
+    assert.equal(q.difficulty, 'medium');
+    assert.ok(!recent.has(q.id), `${q.id} was asked in the last game`);
+  }
+});
+
 test('lives: a run starts with exactly three lives', () => {
   const run = new RunState(9);
   assert.equal(MAX_LIVES, 3);

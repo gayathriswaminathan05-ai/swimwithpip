@@ -78,7 +78,7 @@ pip-way-home/
 ├── src/
 │   ├── main.js              Boot + real loading progress
 │   ├── styles.css           Interface styles (ocean palette, hurdle panel, minimal quiz sheet)
-│   ├── data/questions.js    Editable question bank (120 questions)
+│   ├── data/questions.js    Editable question bank (216 questions)
 │   └── game/
 │       ├── Game.js          State machine: title → intro → journey → game over / victory
 │       ├── audio.js         Synthesised sound effects and ambient music (Web Audio, no files)
@@ -121,12 +121,14 @@ Checked by automated tests plus screenshot review of every hurdle's question vie
 escape and capture. Screenshots were taken in Chrome emulating a 390 × 844 phone (portrait), with
 one landscape check (844 × 390).
 
-**Unit tests** (`npm test`): 12 of 12 pass.
+**Unit tests** (`npm test`): 14 of 14 pass.
 
-- The question bank is valid: 144 questions across six topics, unique ids, exactly 4 different
+- The question bank is valid: 216 questions across six topics, unique ids, exactly 4 different
   choices, length limits respected, and every explanation names its answer.
 - Questions are written for every player: no alphabet or letter puzzles, metric units only.
 - No repeats within a playthrough; categories rotate.
+- A new game brings questions not seen in earlier games (six games in a row per difficulty), and
+  when the set starts over the last game's questions stay out.
 - The correct answer is spread evenly across the four positions and never sits in the same spot
   twice in a row.
 - Three lives per run; each mistake costs exactly one; no deductions after Game Over.

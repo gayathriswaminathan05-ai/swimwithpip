@@ -77,6 +77,11 @@ Loop: **explore → danger appears → question → feedback → escape or setba
 out (no lull, no hole, no arch, no gap). The escape route appears only as the reward for a
 correct answer, so the answer visibly causes the rescue.
 
+**Ending:** straight after the final escape, Pip and its family share a short, happy swirl
+("Together again at last!"), then the scene fades straight to the doorstep of the glowing home
+("Home at last."), with the progress bar complete. There is no long swim along the rest of the
+route: reunion to victory card takes about 9 seconds.
+
 Between hurdles there are calm stretches: a whale glides overhead, story captions appear, area
 banners mark the transitions, and the reef changes as Pip goes deeper. Jellyfish are scenery
 only, never a hurdle. A journey asks 9 questions
@@ -85,13 +90,18 @@ over about 5–8 minutes.
 **Quiz rules**
 
 - There are six topics: maths, geography, history, science, nature and logic. Each journey
-  rotates through all of them. The bank holds 144 questions, 8 for each topic and difficulty.
+  rotates through all of them. The bank holds 216 questions, 12 for each topic and difficulty.
 - Questions are written for players of any nationality: world geography and world history,
   metric units, and nothing tied to one country, language or alphabet.
 - Each question has four labelled choices (1–4) and exactly one correct answer.
 - Choices are shuffled at runtime, and the correct answer's position is balanced across the four
   slots and never repeats twice in a row.
 - No question repeats within a playthrough, and categories rotate.
+- **Fresh questions every game.** The device remembers which questions it has already asked
+  (localStorage), and each new game draws only unseen ones at the chosen difficulty. That is
+  about six full games per difficulty before anything comes back. When a difficulty's whole set
+  has been seen, it starts over with the oldest questions, still keeping the last game's 12 out.
+  It never switches difficulty to find fresh questions.
 - Every answer shows a short explanation. After a correct answer it appears in a toast while the
   escape plays. After a wrong answer it appears in the red feedback strip.
 - Input is tap or click, the 1–4 or A–D keys, or Enter on the focused button.
