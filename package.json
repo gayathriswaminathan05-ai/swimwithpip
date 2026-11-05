@@ -1,0 +1,23 @@
+{
+  "name": "pip-the-long-swim-home",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Pip: The Long Swim Home — a mobile-first 3D underwater quiz adventure built with Three.js.",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0 --port 5180",
+    "build": "vite build",
+    "preview": "vite preview --host 0.0.0.0 --port 5181",
+    "test": "node --test tests/*.test.js",
+    "test:browser": "node tests/playthrough.mjs"
+  },
+  "dependencies": {
+    "@fontsource/lexend": "^5.3.0",
+    "@fontsource/unbounded": "^5.3.0",
+    "three": "0.187.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.1",
+    "vite": "8.3.6"
+  }
+}

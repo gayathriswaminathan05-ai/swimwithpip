@@ -1,0 +1,371 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Pip — three looks for the quiz UI</title>
+<link rel="icon" href="data:," />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,400..700,0..100,0..1;1,9..144,400..700,0..100,0..1&family=Lexend:wght@400;500;600&family=Shantell+Sans:wght@500;700&family=Unbounded:wght@500;600&display=swap" />
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 28px 16px 48px; background: #0b1d2b; color: #e6f1f6; font-family: Lexend, system-ui, sans-serif; }
+  header { max-width: 1340px; margin: 0 auto 26px; }
+  h1 { margin: 0 0 6px; font-size: 22px; font-weight: 600; }
+  .lead { margin: 0; color: #9fb8c6; font-size: 15px; line-height: 1.5; }
+  .row { display: flex; flex-wrap: wrap; gap: 30px; justify-content: center; max-width: 1340px; margin: 0 auto; }
+  .col { width: 304px; }
+  .frame { position: relative; width: 304px; height: 658px; border-radius: 36px; overflow: hidden; box-shadow: 0 0 0 7px #1d3140, 0 24px 50px rgba(0, 0, 0, 0.45); background: #12324a; }
+  .frame > img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .phone { position: absolute; left: 0; top: 0; width: 390px; height: 844px; transform: scale(0.7795); transform-origin: 0 0; background: url(scene-octopus.jpg) center / cover; overflow: hidden; user-select: none; -webkit-user-select: none; }
+  .name { margin: 18px 2px 6px; font-size: 18px; font-weight: 600; }
+  .name small { font-weight: 400; color: #9fb8c6; font-size: 14px; }
+  .notes { margin: 0; padding-left: 18px; color: #b9cdd8; font-size: 13.5px; line-height: 1.55; }
+  .notes li { margin-bottom: 3px; }
+  .pick { display: inline-block; margin-top: 8px; padding: 3px 10px; border-radius: 99px; background: #17b39c; color: #fff; font-size: 12px; font-weight: 600; }
+
+  /* ---------- shared phone structure (390 × 844 design pixels) ---------- */
+  .hud { position: absolute; left: 10px; right: 10px; top: 10px; height: 62px; display: flex; align-items: center; gap: 8px; padding: 0 9px; }
+  .ib { width: 44px; height: 44px; flex: none; display: grid; place-items: center; border: 0; padding: 0; border-radius: 50%; }
+  .ib svg { width: 22px; height: 22px; display: block; }
+  .prog { flex: 1; min-width: 0; display: grid; justify-items: center; gap: 1px; }
+  .prog svg { width: 100%; height: 26px; overflow: visible; display: block; }
+  .zone { font-size: 11.5px; font-weight: 600; letter-spacing: 0.02em; white-space: nowrap; }
+  .lives { display: flex; gap: 5px; flex: none; align-items: center; }
+  .hz { position: absolute; left: 10px; right: 10px; top: 84px; display: flex; gap: 11px; align-items: flex-start; padding: 12px 15px 13px 12px; }
+  .hz .ic { flex: none; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 17px; }
+  .hz .bd { flex: 1; min-width: 0; }
+  .hz .hd { display: flex; align-items: baseline; gap: 8px; margin: 0 0 3px; }
+  .hz .st { margin-left: auto; flex: none; font-size: 13px; }
+  .hz p { margin: 0; font-size: 14.5px; line-height: 1.42; }
+  .sheet { position: absolute; left: 0; right: 0; bottom: 0; padding: 18px 18px 30px; display: grid; gap: 13px; }
+  .top { display: flex; justify-content: space-between; align-items: center; font-size: 14px; }
+  .topic { display: inline-flex; align-items: center; gap: 7px; }
+  .topic::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--dot); }
+  .skip { font-size: 13px; }
+  .q { margin: 0; font-size: 22px; line-height: 1.28; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .ans, .btn { position: relative; border: 0; cursor: pointer; -webkit-tap-highlight-color: transparent; touch-action: manipulation; font: inherit;
+    transition: transform 340ms cubic-bezier(0.3, 1.55, 0.5, 1), background 200ms ease, box-shadow 200ms ease, opacity 250ms ease, color 200ms ease; }
+  .ans { min-height: 64px; padding: 8px 18px; text-align: left; font-size: 19px; }
+  .ans.is-pressing, .btn.is-pressing { transform: scale(0.95); transition-duration: 200ms; transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1); }
+  .ans.is-dim { opacity: 0.4; }
+  .btn { width: 100%; min-height: 54px; font-size: 18px; }
+  .ring { position: absolute; z-index: 3; border-style: solid; border-radius: 50%; pointer-events: none; transform: translate(-50%, -50%); }
+  .result { display: none; gap: 10px; }
+  .result.on { display: grid; animation: rin 300ms cubic-bezier(0.22, 1, 0.36, 1); }
+  @keyframes rin { from { opacity: 0; transform: translateY(8px); } }
+  .result .msg { display: flex; align-items: center; gap: 9px; font-size: 16px; font-weight: 600; }
+  .bub { position: absolute; width: 9px; height: 9px; border-radius: 50%; pointer-events: none; animation: bub 0.95s ease-out forwards; }
+  @keyframes bub { to { transform: translateY(-60px) scale(1.35); opacity: 0; } }
+
+  /* ---------- A · Sea glass ---------- */
+  .A { color: #eafcff; font-family: Lexend, sans-serif; }
+  .A .hud { background: rgba(5, 30, 48, 0.58); -webkit-backdrop-filter: blur(14px) saturate(1.3); backdrop-filter: blur(14px) saturate(1.3); border-radius: 24px;
+    box-shadow: inset 0 1px 0 rgba(170, 240, 255, 0.4), inset 0 0 0 1px rgba(140, 220, 255, 0.18), 0 8px 24px rgba(0, 10, 20, 0.3); }
+  .A .ib { background: rgba(255, 255, 255, 0.08); color: #bff4ff; box-shadow: inset 0 0 0 1px rgba(150, 235, 255, 0.28); }
+  .A .zone { color: #a6e3f2; }
+  .A .route-bg { fill: none; stroke: rgba(160, 230, 255, 0.35); stroke-width: 2; stroke-dasharray: 2 5; stroke-linecap: round; }
+  .A .route-lit { fill: none; stroke: #7fe9ff; stroke-width: 3; stroke-linecap: round; filter: drop-shadow(0 0 3px #7fe9ff); }
+  .A .pipdot { fill: #ff8a5c; stroke: #fff; stroke-width: 1.6; filter: drop-shadow(0 0 4px #ff9d6c); }
+  .A .home { fill: #ffd36b; filter: drop-shadow(0 0 4px #ffc847); }
+  .A .orb { width: 15px; height: 15px; border-radius: 50%; background: radial-gradient(circle at 40% 35%, #fff6d0, #ffc65a 45%, #e8890c 78%); box-shadow: 0 0 10px 2px rgba(255, 190, 80, 0.65); }
+  .A .hz { background: rgba(72, 42, 6, 0.55); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); border-radius: 20px; color: #ffe3b8;
+    box-shadow: inset 0 0 0 1px rgba(255, 196, 110, 0.45), inset 0 1px 0 rgba(255, 220, 160, 0.5), 0 0 28px rgba(255, 170, 60, 0.22); }
+  .A .hz .ic { background: radial-gradient(circle at 40% 35%, #fff3c4, #ffb340 60%, #d9770a); color: #5a3200; box-shadow: 0 0 14px rgba(255, 180, 70, 0.75); }
+  .A .hz .tt { font-family: Unbounded, sans-serif; font-weight: 600; font-size: 15.5px; color: #fff1d9; }
+  .A .hz .st { color: #e9b878; }
+  .A .hz b { color: #fff; font-weight: 600; }
+  .A .sheet { background: rgba(6, 32, 50, 0.8); -webkit-backdrop-filter: blur(18px) saturate(1.2); backdrop-filter: blur(18px) saturate(1.2); border-radius: 30px 30px 0 0;
+    box-shadow: inset 0 1px 0 rgba(160, 236, 255, 0.55), 0 -10px 40px rgba(0, 10, 20, 0.3); }
+  .A .topic { color: #8fe3f5; --dot: #5cc8ff; }
+  .A .skip { color: #7fa6b5; }
+  .A .q { font-family: Unbounded, sans-serif; font-weight: 500; font-size: 19.5px; line-height: 1.38; color: #f2fdff; }
+  .A .ans { border-radius: 20px; background: rgba(255, 255, 255, 0.07); color: #eafcff; font-weight: 600;
+    box-shadow: inset 0 0 0 1px rgba(150, 235, 255, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.12); }
+  .A .ans.is-pressing { background: rgba(140, 230, 255, 0.14); }
+  .A .ring { border-color: #a5f4ff; box-shadow: 0 0 14px rgba(120, 235, 255, 0.85), inset 0 0 10px rgba(120, 235, 255, 0.55); }
+  .A .ans.is-correct { background: rgba(23, 179, 156, 0.34); color: #fff; box-shadow: inset 0 0 0 1.5px #74f5dd, 0 0 24px rgba(90, 240, 210, 0.5); }
+  .A .ans.is-wrong { background: rgba(255, 90, 120, 0.12); color: #ffd0da; transform: translateY(3px); box-shadow: inset 0 0 0 1.5px rgba(255, 130, 155, 0.75); }
+  .A .bub { border: 1.5px solid #bff7ff; }
+  .A .good .msg { color: #8ff5df; }
+  .A .bad .msg { color: #ffb3c2; }
+  .A .btn { border-radius: 20px; color: #fff; font-family: Unbounded, sans-serif; font-weight: 500; font-size: 15.5px; background: rgba(255, 127, 87, 0.85);
+    box-shadow: inset 0 1px 0 rgba(255, 220, 200, 0.6), 0 0 22px rgba(255, 127, 87, 0.45); }
+  .A .btn .ring { border-color: #ffe0d2; box-shadow: 0 0 12px rgba(255, 200, 170, 0.9); }
+
+  /* ---------- B · Storybook ---------- */
+  .B { color: #2a2117; font-family: "Atkinson Hyperlegible", sans-serif; }
+  .B .serif { font-family: Fraunces, serif; font-variation-settings: "SOFT" 100, "WONK" 1; }
+  .B .hud { background: #fbf1dc; border-radius: 18px 26px 16px 22px; box-shadow: inset 0 0 0 2.5px #2a2117, 0 10px 24px rgba(0, 0, 0, 0.28); }
+  .B .ib { background: #fffaf0; color: #2a2117; box-shadow: inset 0 0 0 2px #2a2117; border-radius: 46% 54% 50% 50% / 50% 48% 52% 50%; }
+  .B .zone { color: #7a5a32; font-family: Fraunces, serif; font-style: italic; font-weight: 500; font-size: 13px; letter-spacing: 0; }
+  .B .trail-bg { fill: none; stroke: #2a2117; stroke-width: 2.4; stroke-dasharray: 0.1 6; stroke-linecap: round; opacity: 0.55; }
+  .B .trail-lit { fill: none; stroke: #2a2117; stroke-width: 2.4; stroke-linecap: round; }
+  .B .hz { background: #173a52; color: #f6e7c8; border-radius: 8px 16px 10px 18px; transform: rotate(-0.8deg);
+    box-shadow: inset 0 0 0 2px #173a52, inset 0 0 0 3.5px #f6e7c8, 0 10px 24px rgba(0, 0, 0, 0.3); padding: 14px 16px 15px 14px; }
+  .B .hz .ic { background: #f6e7c8; color: #173a52; font-family: Fraunces, serif; font-weight: 700; font-size: 19px; }
+  .B .hz .tt { font-family: Fraunces, serif; font-variation-settings: "SOFT" 100, "WONK" 1; font-style: italic; font-weight: 650; font-size: 20px; color: #fff3dc; }
+  .B .hz .st { color: #c9b48d; font-family: Fraunces, serif; font-style: italic; font-size: 14px; }
+  .B .hz b { color: #ffd88a; }
+  .B .sheet { background-color: #fbf1dc; background-image: radial-gradient(rgba(120, 80, 30, 0.07) 1px, transparent 1.6px); background-size: 7px 7px;
+    border-radius: 26px 36px 0 0; box-shadow: inset 0 2.5px 0 #2a2117, 0 -10px 30px rgba(0, 0, 0, 0.25); }
+  .B .topic { color: #7a5a32; font-weight: 700; --dot: #2f6fb0; }
+  .B .skip { color: #9a7d55; }
+  .B .q { font-family: Fraunces, serif; font-variation-settings: "SOFT" 100, "WONK" 1; font-weight: 650; font-size: 24px; line-height: 1.22; }
+  .B .ans { background: #fffaf0; color: #2a2117; font-weight: 700; border-radius: 14px 20px 12px 18px; box-shadow: inset 0 0 0 2px #2a2117; transform: rotate(var(--r, 0deg)); }
+  .B .ans.is-pressing { transform: rotate(0deg) scale(0.95); background: #fff1da; }
+  .B .ring { border-color: #2a2117; }
+  .B .ans.is-correct { background: #e3f3e2; color: #1f5e3d; box-shadow: inset 0 0 0 2.5px #1f7a4d; }
+  .B .ans.is-correct::after { content: "✓"; position: absolute; right: -9px; top: -11px; width: 30px; height: 30px; border-radius: 50%; background: #1f7a4d; color: #fffaf0;
+    display: grid; place-items: center; font-size: 16px; transform: rotate(-14deg); box-shadow: 0 0 0 3px #fbf1dc; animation: stamp 0.38s cubic-bezier(0.3, 1.6, 0.5, 1); }
+  @keyframes stamp { from { transform: rotate(-14deg) scale(2.2); opacity: 0; } }
+  .B .ans.is-wrong { background: #f9e0da; color: #7a2e20; box-shadow: inset 0 0 0 2.5px #a8432f; }
+  .B .ans.is-wrong::after { content: ""; position: absolute; left: 12px; right: 12px; top: 50%; height: 16px; margin-top: -8px; animation: rin 0.3s ease-out;
+    background: center / 100% 100% no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 16' preserveAspectRatio='none'%3E%3Cpath d='M2 10 C 18 2, 28 14, 46 7 S 78 2, 98 9' fill='none' stroke='%23a8432f' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E"); }
+  .B .good .msg { color: #1f5e3d; font-family: Fraunces, serif; font-style: italic; font-size: 19px; }
+  .B .bad .msg { color: #7a2e20; font-family: Fraunces, serif; font-style: italic; font-size: 18px; }
+  .B .btn { background: #a8432f; color: #fffaf0; font-family: Fraunces, serif; font-weight: 650; font-size: 19px; border-radius: 14px 22px 14px 18px; box-shadow: inset 0 0 0 2.5px #2a2117; }
+  .B .btn .ring { border-color: #2a2117; }
+
+  /* ---------- C · Jelly bubbles ---------- */
+  .C { color: #123a52; font-family: Lexend, sans-serif; }
+  .C .hand { font-family: "Shantell Sans", sans-serif; }
+  .C .hud { background: rgba(255, 255, 255, 0.94); border-radius: 999px; box-shadow: inset 0 -3px 8px rgba(18, 58, 82, 0.06), 0 8px 22px rgba(0, 20, 40, 0.22); }
+  .C .ib { background: #e6f6fb; color: #1f8fe0; box-shadow: inset 0 -2px 4px rgba(31, 143, 224, 0.12); }
+  .C .zone { color: #5d8aa0; font-family: "Shantell Sans", sans-serif; font-weight: 700; font-size: 11.5px; letter-spacing: 0; }
+  .C .lives { gap: 3px; }
+  .C .chain { display: flex; align-items: center; gap: 4px; height: 26px; }
+  .C .chain i { width: 11px; height: 11px; border-radius: 50%; background: #fff; box-shadow: inset 0 0 0 1.5px #a9d8e8; }
+  .C .chain i.done { background: radial-gradient(circle at 35% 30%, #a8fff0, #17b39c 70%); box-shadow: none; }
+  .C .chain i.now { width: 20px; height: 20px; background: radial-gradient(circle at 35% 30%, #ffd2bf, #ff7f57 70%); box-shadow: 0 0 0 3px #fff, 0 0 0 4.5px #ffb79e; }
+  .C .chain i.star { background: radial-gradient(circle at 35% 30%, #fff3b0, #ffc800 75%); box-shadow: none; width: 15px; height: 15px; }
+  .C .life { width: 21px; height: 21px; border-radius: 50%; display: grid; place-items: center; background: radial-gradient(circle at 35% 30%, #fff, #ffe3ea 70%);
+    box-shadow: inset 0 0 0 1.5px #ffc2d0; color: #ff5f7e; font-size: 13px; }
+  .C .hz { background: #ff7f57; color: #fff; border-radius: 28px; box-shadow: inset 0 -5px 12px rgba(160, 50, 20, 0.2), inset 0 2px 0 rgba(255, 255, 255, 0.3), 0 10px 24px rgba(255, 100, 60, 0.3); }
+  .C .hz .ic { background: #fff; color: #ff7f57; font-family: "Shantell Sans", sans-serif; font-size: 19px; }
+  .C .hz .tt { font-family: "Shantell Sans", sans-serif; font-weight: 700; font-size: 19px; }
+  .C .hz .st { color: #ffe2d6; font-family: "Shantell Sans", sans-serif; font-weight: 700; }
+  .C .hz b { font-weight: 700; }
+  .C .sheet { background: #eef9fc; border-radius: 38px 38px 0 0; box-shadow: 0 -10px 30px rgba(0, 20, 40, 0.25); }
+  .C .topic { font-family: "Shantell Sans", sans-serif; font-weight: 700; color: #3b7fa0; --dot: #1f8fe0; }
+  .C .skip { color: #7fa6b8; font-family: "Shantell Sans", sans-serif; }
+  .C .q { font-family: "Shantell Sans", sans-serif; font-weight: 700; font-size: 24px; line-height: 1.25; }
+  .C .ans { border-radius: 999px; text-align: center; font-family: "Shantell Sans", sans-serif; font-weight: 700; font-size: 21px; color: #123a52;
+    background: radial-gradient(120% 100% at 30% 15%, #fff 0%, #f6fcfe 55%, #dcf1f8 100%);
+    box-shadow: inset 0 0 0 1.5px #bfe3ef, inset 0 -6px 12px rgba(31, 143, 224, 0.08), 0 6px 14px rgba(18, 58, 82, 0.08); }
+  .C .ans.is-pressing { transform: scale(1.06, 0.88); }
+  .C .ring { border-color: rgba(110, 200, 230, 0.95); background: radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.85) 0 9%, transparent 10%); }
+  .C .ans.is-correct { background: radial-gradient(120% 100% at 30% 15%, #6fe8d2 0%, #17b39c 70%); color: #fff; box-shadow: 0 8px 18px rgba(23, 179, 156, 0.35); animation: pop 0.42s cubic-bezier(0.3, 1.6, 0.5, 1); }
+  @keyframes pop { 40% { transform: scale(1.12); } }
+  .C .ans.is-wrong { background: #dfe9ee; color: #86a0ae; box-shadow: none; transform: scale(0.9); }
+  .C .bub { border: 2px solid #17b39c; }
+  .C .good .msg { justify-content: center; background: #17b39c; color: #fff; border-radius: 999px; padding: 10px 16px; font-family: "Shantell Sans", sans-serif; font-weight: 700; }
+  .C .bad .msg { justify-content: center; color: #c63e57; font-family: "Shantell Sans", sans-serif; font-weight: 700; }
+  .C .btn { border-radius: 999px; background: radial-gradient(120% 100% at 30% 15%, #ffb196 0%, #ff7f57 70%); color: #fff; font-family: "Shantell Sans", sans-serif; font-weight: 700; font-size: 19px;
+    box-shadow: 0 8px 18px rgba(255, 127, 87, 0.35); }
+  .C .btn .ring { border-color: rgba(255, 255, 255, 0.95); }
+  .C .btn.is-pressing { transform: scale(1.05, 0.88); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Pip — three looks for the quiz UI</h1>
+  <p class="lead">Same game scene, same layout (hurdle panel on top, minimal quiz below). Each look keeps your Dribbble press ring, styled to match.
+    Tap an answer to try it: <b>60</b> is right; any other answer shows the wrong-answer state.</p>
+</header>
+
+<div class="row">
+  <!-- Current -->
+  <div class="col">
+    <div class="frame"><img src="current.png" alt="The current quiz screen, for comparison" /></div>
+    <p class="name">Now <small>for comparison</small></p>
+    <ul class="notes">
+      <li>Fredoka font, a close cousin of Duolingo's</li>
+      <li>White cards with thin outlines, green/red result bar</li>
+      <li>Rounded progress bar and hearts</li>
+    </ul>
+  </div>
+
+  <!-- A · Sea glass -->
+  <div class="col">
+    <div class="frame"><div class="phone A">
+      <div class="hud">
+        <button class="ib" aria-label="Pause"><svg viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" rx="1.6" fill="currentColor"/><rect x="14" y="5" width="4" height="14" rx="1.6" fill="currentColor"/></svg></button>
+        <div class="prog">
+          <svg viewBox="0 0 160 24" preserveAspectRatio="none"><path class="route-bg" d="M4 12 C 22 2, 38 22, 58 12 S 98 2, 118 12 S 146 20, 156 12" /><path class="route-lit" pathLength="100" stroke-dasharray="30 100" d="M4 12 C 22 2, 38 22, 58 12 S 98 2, 118 12 S 146 20, 156 12" /><circle class="home" cx="156" cy="12" r="4" /><circle class="pipdot" data-at="0.3" r="5" /></svg>
+          <span class="zone">The Dangerous Depths · 2/8</span>
+        </div>
+        <div class="lives"><span class="orb"></span><span class="orb"></span><span class="orb"></span></div>
+        <button class="ib" aria-label="Sound"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor" stroke="none"/><path d="M16.5 8.5a5 5 0 0 1 0 7"/><path d="M19 6a8.5 8.5 0 0 1 0 12"/></svg></button>
+      </div>
+      <div class="hz"><span class="ic">!</span><div class="bd"><p class="hd"><span class="tt">Octopus ambush</span><span class="st">3 of 8</span></p><p>Tentacles are reaching out from behind the rock. <b>Answer to slip past.</b></p></div></div>
+      <div class="sheet">
+        <div class="top"><span class="topic">Maths</span><span class="skip">Skip (test)</span></div>
+        <p class="q">What comes next: 100, 90, 80, 70, …?</p>
+        <div class="grid"><button class="ans">65</button><button class="ans" data-ok>60</button><button class="ans">50</button><button class="ans">75</button></div>
+        <div class="result good"><div class="msg">✓ Nice! Pip slips past the tentacles.</div></div>
+        <div class="result bad"><div class="msg">✗ Not quite. It goes down by 10, so 60.</div><button class="btn">Try another question</button></div>
+      </div>
+    </div></div>
+    <p class="name">A · Sea glass <small>recommended</small></p>
+    <ul class="notes">
+      <li>Font: Unbounded headings, Lexend text</li>
+      <li>Tinted glass panels; the ocean stays visible through them</li>
+      <li>Press: a glowing light ring; right answers fill with light and bubbles</li>
+      <li>Lives are Pip's three lantern lights; progress is a glowing route</li>
+    </ul>
+    <span class="pick">Fits a lanternfish in the deep sea</span>
+  </div>
+
+  <!-- B · Storybook -->
+  <div class="col">
+    <div class="frame"><div class="phone B">
+      <div class="hud">
+        <button class="ib" aria-label="Pause"><svg viewBox="0 0 24 24"><rect x="6.5" y="5.5" width="3.6" height="13" rx="1.6" fill="currentColor"/><rect x="13.9" y="5.5" width="3.6" height="13" rx="1.6" fill="currentColor"/></svg></button>
+        <div class="prog">
+          <svg viewBox="0 0 160 24" preserveAspectRatio="none"><path class="trail-bg" d="M4 14 C 26 6, 40 20, 62 13 S 102 6, 124 13 S 148 18, 156 12" /><path class="trail-lit" pathLength="100" stroke-dasharray="30 100" d="M4 14 C 26 6, 40 20, 62 13 S 102 6, 124 13 S 148 18, 156 12" />
+            <path d="M156 6.5l1.7 3.6 3.9.5-2.9 2.7.7 3.9-3.4-1.9-3.4 1.9.7-3.9-2.9-2.7 3.9-.5z" fill="#ffc847" stroke="#2a2117" stroke-width="1.2" stroke-linejoin="round" />
+            <g class="pipdot" data-at="0.3"><path d="M-6 0 C -3 -5, 4 -5, 6 0 C 4 5, -3 5, -6 0 Z M-6 0 L -10 -4 L -10 4 Z" fill="#ff7f57" stroke="#2a2117" stroke-width="1.3" stroke-linejoin="round" /><circle cx="2.6" cy="-0.8" r="1" fill="#2a2117" /></g></svg>
+          <span class="zone">The Dangerous Depths · 2/8</span>
+        </div>
+        <div class="lives">
+          <svg width="22" height="20" viewBox="0 0 24 22"><path d="M12 20s-9-5.4-9-11.6A4.9 4.9 0 0 1 12 6a4.9 4.9 0 0 1 9 2.4C21 14.6 12 20 12 20z" fill="#ff7f6b" stroke="#2a2117" stroke-width="2" stroke-linejoin="round"/></svg>
+          <svg width="22" height="20" viewBox="0 0 24 22"><path d="M12 20s-9-5.4-9-11.6A4.9 4.9 0 0 1 12 6a4.9 4.9 0 0 1 9 2.4C21 14.6 12 20 12 20z" fill="#ff7f6b" stroke="#2a2117" stroke-width="2" stroke-linejoin="round"/></svg>
+          <svg width="22" height="20" viewBox="0 0 24 22"><path d="M12 20s-9-5.4-9-11.6A4.9 4.9 0 0 1 12 6a4.9 4.9 0 0 1 9 2.4C21 14.6 12 20 12 20z" fill="#ff7f6b" stroke="#2a2117" stroke-width="2" stroke-linejoin="round"/></svg>
+        </div>
+        <button class="ib" aria-label="Sound"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor" stroke="none"/><path d="M16.5 8.5a5 5 0 0 1 0 7"/><path d="M19 6a8.5 8.5 0 0 1 0 12"/></svg></button>
+      </div>
+      <div class="hz"><span class="ic">!</span><div class="bd"><p class="hd"><span class="tt">Octopus ambush</span><span class="st">3 of 8</span></p><p>Tentacles are reaching out from behind the rock. <b>Answer to slip past.</b></p></div></div>
+      <div class="sheet">
+        <div class="top"><span class="topic">Maths</span><span class="skip">Skip (test)</span></div>
+        <p class="q">What comes next: 100, 90, 80, 70, …?</p>
+        <div class="grid"><button class="ans" style="--r:-1.2deg">65</button><button class="ans" data-ok style="--r:1deg">60</button><button class="ans" style="--r:0.8deg">50</button><button class="ans" style="--r:-0.9deg">75</button></div>
+        <div class="result good"><div class="msg">Phew! Pip slipped right past.</div></div>
+        <div class="result bad"><div class="msg">Not quite. It drops by 10 each time, so 60.</div><button class="btn">Try another question</button></div>
+      </div>
+    </div></div>
+    <p class="name">B · Storybook</p>
+    <ul class="notes">
+      <li>Font: Fraunces (a soft storybook serif) with Atkinson Hyperlegible</li>
+      <li>Cream paper panels with ink outlines, slightly hand-placed</li>
+      <li>Press: an ink ring; right answers get a stamp, wrong ones a scribble</li>
+      <li>Progress is a dotted ink trail with a tiny Pip</li>
+    </ul>
+  </div>
+
+  <!-- C · Jelly bubbles -->
+  <div class="col">
+    <div class="frame"><div class="phone C">
+      <div class="hud">
+        <button class="ib" aria-label="Pause"><svg viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" rx="2" fill="currentColor"/><rect x="14" y="5" width="4" height="14" rx="2" fill="currentColor"/></svg></button>
+        <div class="prog">
+          <div class="chain"><i class="done"></i><i class="done"></i><i class="now"></i><i></i><i></i><i></i><i></i><i></i><i class="star"></i></div>
+          <span class="zone">The Dangerous Depths · 2/8</span>
+        </div>
+        <div class="lives"><span class="life">♥</span><span class="life">♥</span><span class="life">♥</span></div>
+        <button class="ib" aria-label="Sound"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor" stroke="none"/><path d="M16.5 8.5a5 5 0 0 1 0 7"/><path d="M19 6a8.5 8.5 0 0 1 0 12"/></svg></button>
+      </div>
+      <div class="hz"><span class="ic">!</span><div class="bd"><p class="hd"><span class="tt">Octopus ambush!</span><span class="st">3 of 8</span></p><p>Tentacles are reaching out from behind the rock. <b>Answer to slip past.</b></p></div></div>
+      <div class="sheet">
+        <div class="top"><span class="topic">Maths</span><span class="skip">Skip (test)</span></div>
+        <p class="q">What comes next: 100, 90, 80, 70, …?</p>
+        <div class="grid"><button class="ans">65</button><button class="ans" data-ok>60</button><button class="ans">50</button><button class="ans">75</button></div>
+        <div class="result good"><div class="msg">Yay! Pip slips past!</div></div>
+        <div class="result bad"><div class="msg">Oops! It drops by 10, so it's 60.</div><button class="btn">Try another question</button></div>
+      </div>
+    </div></div>
+    <p class="name">C · Jelly bubbles</p>
+    <ul class="notes">
+      <li>Font: Shantell Sans (hand-lettered) with Lexend</li>
+      <li>Pearly, fully rounded panels and pill answers</li>
+      <li>Press: a bubble ring and a jelly squash; right answers pop, wrong ones deflate</li>
+      <li>Progress is a chain of bubbles</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+  // Place Pip on each progress route.
+  document.querySelectorAll('.pipdot').forEach((dot) => {
+    const path = dot.parentNode.querySelector('path');
+    const p = path.getPointAtLength(path.getTotalLength() * Number(dot.dataset.at));
+    if (dot.tagName === 'circle') { dot.setAttribute('cx', p.x); dot.setAttribute('cy', p.y); }
+    else dot.setAttribute('transform', `translate(${p.x} ${p.y})`);
+  });
+
+  // Press ring (same timing as the game): contract while held, burst on release.
+  const CONTRACT = 200, BURST = 280, EASE = 'cubic-bezier(0.22, 1, 0.36, 1)';
+  function spawn(el, e) {
+    const r = el.getBoundingClientRect();
+    const k = r.width / el.offsetWidth; // the phone is scaled down
+    const d = Math.round(Math.max(40, Math.min(el.offsetHeight * 1.45, 92)));
+    const w = Math.max(3, Math.round(d * 0.075));
+    const ring = document.createElement('span');
+    ring.className = 'ring';
+    ring.style.cssText = `left:${(e.clientX - r.left) / k}px;top:${(e.clientY - r.top) / k}px;width:${d}px;height:${d}px;border-width:${w}px`;
+    ring.dataset.w = w;
+    el.appendChild(ring);
+    ring.animate([{ transform: 'translate(-50%,-50%) scale(1.1)', opacity: 0 }, { transform: 'translate(-50%,-50%) scale(1)', opacity: 1, offset: 0.25 }, { transform: 'translate(-50%,-50%) scale(0.8)', opacity: 1 }],
+      { duration: CONTRACT, easing: EASE, fill: 'forwards' });
+    return ring;
+  }
+  function burst(el, ring) {
+    el.classList.remove('is-pressing');
+    const a = ring.animate([{ transform: 'translate(-50%,-50%) scale(0.8)', opacity: 1, borderWidth: ring.dataset.w + 'px' }, { transform: 'translate(-50%,-50%) scale(1.75)', opacity: 0, borderWidth: '1px' }],
+      { duration: BURST, easing: EASE, fill: 'forwards' });
+    a.onfinish = () => ring.remove();
+  }
+  function bubbles(el, n, spread) {
+    for (let i = 0; i < n; i++) {
+      const b = document.createElement('span');
+      b.className = 'bub';
+      b.style.cssText = `left:${12 + Math.random() * (el.offsetWidth - 24)}px;top:${el.offsetHeight * 0.35}px;animation-delay:${i * 80}ms`;
+      el.appendChild(b);
+      setTimeout(() => b.remove(), 1200 + i * 80);
+    }
+  }
+  function reset(ph) {
+    ph.querySelectorAll('.ans').forEach((b) => b.classList.remove('is-correct', 'is-wrong', 'is-dim'));
+    ph.querySelectorAll('.result').forEach((r) => r.classList.remove('on'));
+    ph.dataset.busy = '';
+  }
+  function answer(ph, b) {
+    const ok = b.hasAttribute('data-ok');
+    ph.querySelectorAll('.ans').forEach((x) => {
+      if (x.hasAttribute('data-ok')) x.classList.add('is-correct');
+      else if (x === b) x.classList.add('is-wrong');
+      else x.classList.add('is-dim');
+    });
+    ph.querySelector(ok ? '.result.good' : '.result.bad').classList.add('on');
+    if (ok && !ph.classList.contains('B')) bubbles(b, ph.classList.contains('C') ? 9 : 6);
+    if (ok) setTimeout(() => reset(ph), 2600);
+  }
+  document.querySelectorAll('.phone').forEach((ph) => {
+    ph.querySelectorAll('.ans, .btn').forEach((el) => {
+      let p = null;
+      el.addEventListener('pointerdown', (e) => {
+        if (el.classList.contains('ans') && ph.dataset.busy) return;
+        el.classList.add('is-pressing');
+        p = { t0: performance.now(), ring: spawn(el, e) };
+      });
+      const end = () => {
+        if (!p) return;
+        const q = p; p = null;
+        setTimeout(() => burst(el, q.ring), Math.max(0, CONTRACT - (performance.now() - q.t0)));
+      };
+      el.addEventListener('pointerup', end);
+      el.addEventListener('pointerleave', end);
+      el.addEventListener('pointercancel', end);
+      el.addEventListener('click', () => {
+        if (el.classList.contains('btn')) return setTimeout(() => reset(ph), 260);
+        if (ph.dataset.busy) return;
+        ph.dataset.busy = '1';
+        answer(ph, el);
+      });
+    });
+  });
+</script>
+</body>
+</html>

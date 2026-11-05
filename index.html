@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#04182b" />
+    <meta name="description" content="Pip: The Long Swim Home — a 3D underwater quiz adventure. Answer questions to guide a lost deep-sea fish back to its school." />
+    <title>Pip: The Long Swim Home</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 72 48%27%3E%3Cpath d=%27M8 24c10-16 32-18 44-6l12-10-3 16 3 16-12-10C40 42 18 40 8 24z%27 fill=%27%23ff8a5c%27/%3E%3Ccircle cx=%2722%27 cy=%2721%27 r=%275%27 fill=%27%23fff%27/%3E%3Ccircle cx=%2723%27 cy=%2721%27 r=%272.8%27 fill=%27%231a1030%27/%3E%3C/svg%3E" />
+    <style>
+      /* Critical loader styles so progress is visible before the main bundle arrives. */
+      html, body { margin: 0; height: 100%; background: #04182b; color: #eafcff; }
+      #loader { position: fixed; inset: 0; display: grid; place-content: center; justify-items: center; gap: 14px;
+        background: radial-gradient(120% 80% at 50% 30%, #0d4a6b 0%, #06223a 55%, #030f1d 100%);
+        font-family: "Unbounded", "Lexend", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; z-index: 50; }
+      #loader .loader__title { margin: 0; font-size: 56px; letter-spacing: .02em; font-weight: 700; }
+      #loader .loader__sub { margin: -10px 0 8px; opacity: .8; letter-spacing: .12em; text-transform: uppercase; font-size: 12px; }
+      #loader .bar { width: min(260px, 70vw); height: 16px; border-radius: 99px; background: rgba(255,255,255,.18); overflow: hidden; }
+      #loader .bar__fill { height: 100%; width: 0%; background: linear-gradient(90deg, #2fc6e8, #17b39c); box-shadow: inset 0 4px 0 -1px rgba(255,255,255,.35); border-radius: inherit; transition: width .25s ease; }
+      #loader .loader__label { margin: 0; font-size: 14px; opacity: .85; font-variant-numeric: tabular-nums; }
+      #loader .loader__error { max-width: 300px; text-align: center; color: #ffd0d6; font-size: 15px; line-height: 1.4; }
+      #loader svg { width: 72px; height: 48px; }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="scene" aria-hidden="true"></canvas>
+
+      <!-- Loading -->
+      <div id="loader" role="status" aria-live="polite">
+        <svg viewBox="0 0 72 48" aria-hidden="true">
+          <path d="M8 24c10-16 32-18 44-6l12-10-3 16 3 16-12-10C40 42 18 40 8 24z" fill="#ff8a5c" />
+          <circle cx="22" cy="21" r="5" fill="#fff" /><circle cx="23" cy="21" r="2.8" fill="#1a1030" />
+          <circle cx="30" cy="30" r="1.6" fill="#7ff5ff" /><circle cx="36" cy="31" r="1.6" fill="#7ff5ff" /><circle cx="42" cy="30" r="1.6" fill="#7ff5ff" />
+        </svg>
+        <h1 class="loader__title">Pip</h1>
+        <p class="loader__sub">The Long Swim Home</p>
+        <div class="bar" aria-hidden="true"><div class="bar__fill" id="loader-fill"></div></div>
+        <p class="loader__label"><span id="loader-step">Loading…</span> <span id="loader-pct">0%</span></p>
+      </div>
+
+      <div id="ui">
+        <!-- Heads-up display -->
+        <header id="hud" class="hud" hidden>
+          <button id="btn-pause" class="icon-btn" type="button" aria-label="Pause game"></button>
+          <div class="hud__progress">
+            <div class="track" id="track" role="progressbar" aria-label="Journey progress" aria-valuemin="0" aria-valuemax="8" aria-valuenow="0" aria-valuetext="0 of 8 hurdles cleared">
+              <div class="track__fill" id="track-fill"></div>
+              <div class="track__dots" id="track-dots"></div>
+              <div class="track__fish" id="track-fish" aria-hidden="true"><svg viewBox="0 0 30 20"><path d="M3 10C7 4 16 3 22 7l5-4-1.5 7 1.5 7-5-4c-6 4-15 3-19-3z" fill="#ff8a5c"/><path d="M6 8.2C9 5.5 14 4.8 18.5 6.4" stroke="#ffd2bd" stroke-width="1.4" stroke-linecap="round" fill="none"/><circle cx="8.6" cy="9.4" r="2.6" fill="#fff"/><circle cx="9.2" cy="9.4" r="1.4" fill="#10202c"/></svg></div>
+            </div>
+            <p class="hud__zone"><span id="zone-label">The Lost Waters</span><span class="hud__count" id="hud-count">0 of 8</span></p>
+          </div>
+          <div class="hud__lives" id="lives" role="img" aria-label="Lives: 3 of 3">
+            <span class="life" data-life="0"></span><span class="life" data-life="1"></span><span class="life" data-life="2"></span>
+          </div>
+          <button id="btn-sound" class="icon-btn" type="button" aria-label="Mute sound" aria-pressed="false"></button>
+        </header>
+
+        <!-- Quiz panel -->
+        <!-- Hurdle panel (top): what the danger is, kept apart from the quiz itself -->
+        <aside id="hurdle" class="hurdle" hidden aria-labelledby="hurdle-title">
+          <span class="hurdle__icon" id="hurdle-icon" aria-hidden="true"></span>
+          <div class="hurdle__body">
+            <p class="hurdle__step" id="hurdle-step">Hurdle 3 of 8</p>
+            <p class="hurdle__title" id="hurdle-title">Octopus Ambush</p>
+            <p class="hurdle__text" id="quiz-hint"><span id="hurdle-threat"></span> <span class="hurdle__goal" id="hurdle-goal"></span></p>
+          </div>
+        </aside>
+
+        <section id="quiz" class="quiz" hidden aria-labelledby="quiz-q" aria-describedby="quiz-hint">
+          <div class="quiz__head">
+            <button class="skip-q" id="btn-skip-q" type="button">Skip (test)</button>
+          </div>
+          <h2 class="quiz__q" id="quiz-q" tabindex="-1"></h2>
+          <div class="quiz__answers" id="quiz-answers" role="group" aria-label="Answer choices">
+            <button class="answer" type="button" data-i="0"><span class="answer__key">1</span><span class="answer__text"></span><span class="answer__mark" aria-hidden="true"></span></button>
+            <button class="answer" type="button" data-i="1"><span class="answer__key">2</span><span class="answer__text"></span><span class="answer__mark" aria-hidden="true"></span></button>
+            <button class="answer" type="button" data-i="2"><span class="answer__key">3</span><span class="answer__text"></span><span class="answer__mark" aria-hidden="true"></span></button>
+            <button class="answer" type="button" data-i="3"><span class="answer__key">4</span><span class="answer__text"></span><span class="answer__mark" aria-hidden="true"></span></button>
+          </div>
+          <div class="feedback" id="quiz-feedback" hidden>
+            <div class="feedback__head">
+              <span class="feedback__icon" aria-hidden="true"></span>
+              <p class="feedback__title" id="quiz-result" aria-live="assertive"></p>
+            </div>
+            <div class="feedback__body" id="quiz-explain" hidden>
+              <p class="feedback__text" id="explain-text"></p>
+              <button class="btn btn--primary btn--block" id="btn-next" type="button">Try another question</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- Transient messages -->
+        <div id="banner" class="banner" aria-live="polite"></div>
+        <div id="toast" class="toast" role="status" aria-live="polite"></div>
+        <div id="caption" class="caption" aria-live="polite"></div>
+        <button id="btn-skip" class="skip btn btn--secondary" type="button" hidden>Skip intro</button>
+        <div id="vignette" class="vignette" aria-hidden="true"></div>
+        <div id="fade" class="fade" aria-hidden="true"></div>
+
+        <!-- Title -->
+        <section id="title" class="screen screen--title" hidden aria-labelledby="title-h">
+          <div class="title__top">
+            <p class="title__kicker">A deep-sea quiz adventure</p>
+            <h1 class="title__h" id="title-h">Pip</h1>
+            <p class="title__sub">The Long Swim Home</p>
+          </div>
+          <div class="title__bottom">
+            <fieldset class="seg" id="difficulty">
+              <legend>Difficulty</legend>
+              <label><input type="radio" name="difficulty" value="easy" /><span>Easy</span></label>
+              <label><input type="radio" name="difficulty" value="medium" checked /><span>Medium</span></label>
+              <label><input type="radio" name="difficulty" value="hard" /><span>Hard</span></label>
+            </fieldset>
+            <button class="btn btn--primary btn--big" id="btn-start" type="button">Start the journey</button>
+            <button class="btn btn--secondary" id="btn-settings-title" type="button">Settings</button>
+          </div>
+        </section>
+
+        <!-- Rules -->
+        <section id="rules" class="screen screen--card" hidden role="dialog" aria-modal="true" aria-labelledby="rules-h">
+          <div class="card">
+            <h2 class="card__h" id="rules-h">Answer questions. Brave the ocean. Find your way home.</h2>
+            <div class="rules__hearts" aria-hidden="true"><span class="life"></span><span class="life"></span><span class="life"></span></div>
+            <p class="card__lead"><strong>You have three lives. Each wrong answer costs one.</strong></p>
+            <ul class="rules__list">
+              <li>Pip swims on its own — you protect it with your answers.</li>
+              <li>When danger appears, tap the right answer to escape.</li>
+              <li>Take your time: there is no timer.</li>
+            </ul>
+            <button class="btn btn--primary btn--big" id="btn-go" type="button">Let's swim!</button>
+          </div>
+        </section>
+
+        <!-- Pause -->
+        <section id="pause" class="screen screen--card" hidden role="dialog" aria-modal="true" aria-labelledby="pause-h">
+          <div class="card">
+            <h2 class="card__h" id="pause-h">Paused</h2>
+            <p class="card__lead" id="pause-progress"></p>
+            <button class="btn btn--primary btn--big" id="btn-resume" type="button">Resume</button>
+            <button class="btn btn--secondary" id="btn-restart" type="button">Restart journey</button>
+            <button class="btn btn--secondary" id="btn-settings-pause" type="button">Settings</button>
+            <button class="btn btn--secondary" id="btn-quit" type="button">Quit to title</button>
+          </div>
+        </section>
+
+        <!-- Settings -->
+        <section id="settings" class="screen screen--card" hidden role="dialog" aria-modal="true" aria-labelledby="settings-h">
+          <div class="card">
+            <h2 class="card__h" id="settings-h">Settings</h2>
+            <div class="setting">
+              <span class="setting__label" id="lbl-sound">Sound</span>
+              <button class="toggle" id="set-sound" type="button" role="switch" aria-checked="true" aria-labelledby="lbl-sound"><span></span></button>
+            </div>
+            <div class="setting">
+              <label class="setting__label" for="set-quality">Visual quality</label>
+              <select id="set-quality">
+                <option value="auto">Auto</option>
+                <option value="low">Low (battery saver)</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+              </select>
+            </div>
+            <div class="setting">
+              <label class="setting__label" for="set-motion">Reduced motion</label>
+              <select id="set-motion">
+                <option value="system">Match device</option>
+                <option value="on">On</option>
+                <option value="off">Off</option>
+              </select>
+            </div>
+            <div class="setting">
+              <span class="setting__label" id="lbl-skip">Show “Skip (test)” button</span>
+              <button class="toggle" id="set-skip" type="button" role="switch" aria-checked="true" aria-labelledby="lbl-skip"><span></span></button>
+            </div>
+            <p class="setting__note" id="quality-note"></p>
+            <p class="setting__credits">Coral models: “Coral Reef Kit” by <a href="https://poly.pizza/bundle/Coral-Reef-Kit-ghN8EmbYa6" target="_blank" rel="noopener">MiniPoly</a> (Poly Pizza), <a href="https://creativecommons.org/licenses/by/3.0/" target="_blank" rel="noopener">CC BY 3.0</a> / CC0. Fonts: Unbounded &amp; Lexend (SIL OFL). Built with Three.js.</p>
+            <button class="btn btn--primary" id="btn-settings-done" type="button">Done</button>
+          </div>
+        </section>
+
+        <!-- Game over -->
+        <section id="gameover" class="screen screen--card" hidden role="dialog" aria-modal="true" aria-labelledby="go-h">
+          <div class="card card--simple">
+            <h2 class="card__h card__h--big" id="go-h">Game over</h2>
+            <p class="card__lead card__lead--big" id="go-score"></p>
+            <button class="btn btn--primary btn--big" id="btn-retry" type="button">Try Again</button>
+            <button class="btn btn--secondary" id="btn-go-title" type="button">Back to title</button>
+          </div>
+        </section>
+
+        <!-- Victory -->
+        <section id="victory" class="screen screen--card" hidden role="dialog" aria-modal="true" aria-labelledby="win-h">
+          <div class="card card--simple card--win">
+            <span class="win__pip" aria-hidden="true"><svg viewBox="0 0 30 20"><path d="M3 10C7 4 16 3 22 7l5-4-1.5 7 1.5 7-5-4c-6 4-15 3-19-3z" fill="#ff8a5c"/><path d="M6 8.2C9 5.5 14 4.8 18.5 6.4" stroke="#ffd2bd" stroke-width="1.4" stroke-linecap="round" fill="none"/><circle cx="8.6" cy="9.4" r="2.6" fill="#fff"/><circle cx="9.2" cy="9.4" r="1.4" fill="#10202c"/></svg></span>
+            <h2 class="card__h card__h--big" id="win-h">Congratulations!</h2>
+            <p class="card__lead card__lead--big" id="win-lead">You helped Pip swim all the way home to its family.</p>
+            <button class="btn btn--primary btn--big" id="btn-replay" type="button">Play again</button>
+            <button class="btn btn--secondary" id="btn-win-title" type="button">Back to title</button>
+          </div>
+        </section>
+      </div>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
