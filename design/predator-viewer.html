@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Predator model viewer</title>
+<link rel="icon" href="data:," />
+<style>html, body { margin: 0; background: #2a6f8f; } canvas { display: block; }</style>
+</head>
+<body>
+<script type="module">
+  // Dev tool: renders the predator on its own from three angles to judge the body and fins.
+  import * as THREE from 'three';
+  import { Predator } from '/src/game/actors/creatures.js';
+  import { globalUniforms } from '/src/game/gfx/materials.js';
+
+  const W = 1200, H = 420;
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(2);
+  renderer.setSize(W, H);
+  renderer.setClearColor(0x2a6f8f);
+  document.body.appendChild(renderer.domElement);
+  const scene = new THREE.Scene();
+  scene.add(new THREE.HemisphereLight(0xcff4ff, 0x1d4a63, 1.4));
+  const sun = new THREE.DirectionalLight(0xffffff, 1.6);
+  sun.position.set(2, 5, 3);
+  scene.add(sun);
+  const pip = new Predator({ scale: 1 });
+  scene.add(pip.group);
+  const views = [
+    { pos: [9, 0.4, 0], label: 'side' },
+    { pos: [5.2, 2.2, 6.2], label: 'front 3/4' },
+    { pos: [-5.6, 4.6, -6.0], label: 'rear 3/4, from above' },
+  ];
+  const cam = new THREE.PerspectiveCamera(30, (W / 3) / H, 0.1, 50);
+  let t = 0;
+  function frame() {
+    t += 1 / 60;
+    globalUniforms.uTime.value = t;
+    pip.update?.(1 / 60);
+    pip.group.position.set(0, 0, 0);
+    pip.group.rotation.set(0, 0, 0);
+    renderer.setScissorTest(true);
+    views.forEach((v, i) => {
+      renderer.setViewport((W / 3) * i, 0, W / 3, H);
+      renderer.setScissor((W / 3) * i, 0, W / 3, H);
+      cam.position.set(...v.pos);
+      cam.lookAt(0, 0.1, -0.3);
+      renderer.render(scene, cam);
+    });
+    requestAnimationFrame(frame);
+  }
+  window.__ready = true;
+  frame();
+</script>
+</body>
+</html>

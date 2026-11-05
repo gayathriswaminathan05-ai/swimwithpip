@@ -112,7 +112,7 @@ function bodyGeometry(nS, nR) {
  * colour(u, v) → colour. flip reverses the winding when u × v runs the other way (keeps the
  * surface facing outward). Returns a painted, non-indexed geometry ready to merge.
  */
-function finSurface(nu, nv, shape, colour, flip = false) {
+export function finSurface(nu, nv, shape, colour, flip = false) {
   const pos = [];
   const uv = [];
   const idx = [];

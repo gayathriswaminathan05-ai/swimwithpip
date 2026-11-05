@@ -1017,7 +1017,7 @@ export class Game {
     const school = this.school;
     this.cameraMode = 'reunion';
     pip.setExpression('happy');
-    this.ui.caption('Pip’s family! They heard the signal!', { small: false });
+    this.ui.caption('Together again at last!', { small: false });
     this.rig.setShot({ target: pip.group, offset: new THREE.Vector3(0, 0.4, 0), yaw: 0.6, pitch: 0.3, radius: 6.5, rate: 2, rotRate: 0.5 });
     // Orbit the camera slowly while the school swirls around Pip.
     await this.sched.tween(4.5, (k) => {

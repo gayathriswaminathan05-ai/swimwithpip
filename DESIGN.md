@@ -71,7 +71,7 @@ Loop: **explore → danger appears → question → feedback → escape or setba
 | 5 | Dangerous Depths | Predator chase | An anglerfish-like hunter closes in from behind; the only gap in the rock wall is blocked by a boulder | A quick look at the wall: the boulder tumbles away and light shines through the gap. Pip bursts through; the predator bonks the rocks | The predator lunges; its jaws snap; darkness |
 | 6 | Dangerous Depths | Hydrothermal vents | Every chimney roars at once: a wall of scalding plumes | The vents die down into a lull and Pip dashes between them (high-angle view) | A plume sweeps Pip up and away |
 | 7 | Glowing Home | Dark cavern | The route vanishes into a pitch-black cave | Glowing mushrooms light up one by one with chimes; Pip follows them | An undertow pulls Pip into the dark |
-| 8 | Glowing Home | The Final Ambush (two questions) | A big hungry fish rises from behind the rocks to block the way home | Q1: Pip dodges the ambush. Q2: Pip flashes a signal, the school rushes in, and the predator flees | The big fish catches Pip |
+| 8 | Glowing Home | The Final Ambush (two questions) | A big hungry fish rises from behind the rocks to block the way home | Q1: Pip dodges the ambush. Q2, shown beat by beat in one wide shot with captions: Pip flashes its light; far away, lights flash back; Pip's family streams in and swarms the big fish; dazzled, it squints, shakes its head and bolts out of shot, chased off by the family, who then swim back to Pip | The big fish catches Pip |
 
 **The help only comes with a right answer.** Before it, every hurdle shows the danger with no way
 out (no lull, no hole, no arch, no gap). The escape route appears only as the reward for a
@@ -145,8 +145,11 @@ synchronise, and they swim home together to a glowing reef. The completion card 
 
   On a right answer the arms rear up and strike; on a wrong one an arm lashes out; on a capture
   they wrap Pip.
-- **Predator:** a big, dark, speckled deep-sea fish with glowing eyes, a hinged jaw and teeth. No
-  lure or antenna.
+- **Predator:** a big, dark deep-sea fish with glowing eyes, a hinged jaw and teeth, and neat rows
+  of round glowing photophore dots along its flanks. Its fins are smooth tapered membranes built
+  like Pip's (a forked crescent tail, a tall swept-back dorsal, side fins and a small belly fin),
+  never flat cut-outs or spikes. No lure or antenna. `design/predator-viewer.html` shows it alone
+  from three angles.
 - **Jellyfish (scenery only):** pulsing translucent bells with softly waving tentacles.
 - **Whale:** a gentle background giant.
 - **Ambient sea life:** sea turtles with paddling flippers, rays with rippling wings, schools of

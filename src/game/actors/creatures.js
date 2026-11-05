@@ -1,8 +1,8 @@
 import * as THREE from 'three';
-import { paint, paintVerts, merge, finGeometry, warp, mix } from '../gfx/geometry.js';
+import { paint, paintVerts, merge, warp, mix } from '../gfx/geometry.js';
 import { litMaterial, makeSwimUniforms, makeSwayUniforms, GlowPoints } from '../gfx/materials.js';
-import { Swimmer } from './fish.js';
-import { damp, lerp, clamp, fbm3, TAU } from '../core/util.js';
+import { Swimmer, finSurface, pectoralGeometry } from './fish.js';
+import { damp, lerp, clamp, smoothstep, TAU } from '../core/util.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 const _v = new THREE.Vector3();
@@ -394,23 +394,43 @@ export class Predator {
     this.swimU = makeSwimUniforms({ amp: 0.14, k: 1.8, head: 0.0, len: 2.4 });
 
     const parts = [];
-    const body = new THREE.SphereGeometry(1, 30, 22);
+    const body = new THREE.SphereGeometry(1, 44, 32);
     warp(body, (x, y, z) => {
       const zz = z * 1.7;
       const k = zz > 0 ? 1.05 - zz * 0.08 : 1 + zz * 0.36;
-      return [x * 1.0 * k, y * 0.95 * k + (zz > 0.6 ? -0.05 : 0), zz];
+      return [x * 1.0 * k, y * 0.95 * k - 0.05 * smoothstep(0.4, 0.8, zz), zz];
     });
     const cTop = new THREE.Color(0x1f2a40);
     const cMidP = new THREE.Color(0x34466a);
     const cBel = new THREE.Color(0x6a7fa2);
+    // Glowing photophores: neat rows of round, soft-edged dots along each flank (like real
+    // deep-sea fish), placed on the warped body surface.
+    const surf = (zz, th) => {
+      const z = zz / 1.7;
+      const rho = Math.sqrt(Math.max(0, 1 - z * z));
+      const k = zz > 0 ? 1.05 - zz * 0.08 : 1 + zz * 0.36;
+      return new THREE.Vector3(rho * Math.cos(th) * k, rho * Math.sin(th) * 0.95 * k - 0.05 * smoothstep(0.4, 0.8, zz), zz);
+    };
+    const spots = [];
+    for (const side of [-1, 1]) {
+      const flip = (th) => (side > 0 ? th : Math.PI - th);
+      for (let i = 0; i < 7; i++) spots.push({ c: surf(0.75 - i * 0.27, flip(-0.32 + i * 0.03)), r: 0.13 - i * 0.008 });
+      for (let i = 0; i < 5; i++) spots.push({ c: surf(0.55 - i * 0.3, flip(0.42 + i * 0.02)), r: 0.11 - i * 0.008 });
+      spots.push({ c: surf(1.1, flip(0.05)), r: 0.1 });
+    }
     parts.push(
       paintVerts(body, (p) => {
-        const spot = fbm3(p.x * 4, p.y * 4, p.z * 4, 2);
-        if (spot > 0.7 && p.y > -0.2) return { color: 0x6ff0ff, glow: 0.7 };
         const t = p.y;
         return t > 0 ? cMidP.clone().lerp(cTop, Math.min(1, t * 1.4)) : cMidP.clone().lerp(cBel, Math.min(1, -t * 1.5));
       }),
     );
+    // Each photophore is a small glowing bead set into the skin, so it reads as a clean round dot.
+    for (const sp of spots) {
+      const bead = new THREE.SphereGeometry(sp.r * 0.6, 12, 8);
+      const n = new THREE.Vector3(sp.c.x, sp.c.y, sp.c.z * 0.25).normalize();
+      bead.translate(sp.c.x - n.x * sp.r * 0.3, sp.c.y - n.y * sp.r * 0.3, sp.c.z - n.z * sp.r * 0.3);
+      parts.push(paint(bead, 0x7ff3ff, 0.9));
+    }
     // Upper teeth.
     for (let i = 0; i < 9; i++) {
       const a = (i / 8 - 0.5) * 2.1;
@@ -419,26 +439,73 @@ export class Predator {
       tooth.translate(Math.sin(a) * 0.62, -0.2, 1.2 + Math.cos(a) * 0.3 - 0.3);
       parts.push(paint(tooth, 0xf4f1e6, 0.25));
     }
-    // Tail and fins.
-    const tail = finGeometry(
-      [
-        [0, 0.3],
-        [0.6, 0.9],
-        [1.0, 0.95],
-        [0.75, 0],
-        [1.0, -0.95],
-        [0.6, -0.9],
-        [0, -0.3],
-      ],
-      0.1,
+    // Fins: smooth tapered membranes (the same lofted fins as Pip's), not flat cut-outs or spikes.
+    const topAt = (zz) => 0.95 * (zz > 0 ? 1.05 - zz * 0.08 : 1 + zz * 0.36) * Math.sqrt(Math.max(0, 1 - (zz / 1.7) ** 2));
+    const FIN = 0x26324d;
+    const FIN_EDGE = 0x4d6c9c;
+    // Forked tail fanning out from the narrow stalk.
+    const zt = -1.42;
+    parts.push(
+      finSurface(
+        18,
+        8,
+        (u, v) => {
+          const a = 2 * u - 1;
+          const ry = a * 0.26;
+          const ey = a * 1.15;
+          const ez = zt - (0.6 + 0.55 * Math.abs(a) ** 1.4);
+          const t = 0.09 * (1 - v) ** 0.8 * Math.sin(Math.PI * u) ** 0.35 + 0.004;
+          return [ry + (ey - ry) * v ** 0.85, zt + 0.04 + (ez - zt - 0.04) * v, t];
+        },
+        (u, v) => mix(0x1d2739, FIN_EDGE, v ** 1.3),
+        true,
+      ),
     );
-    tail.translate(0, 0, -1.6);
-    parts.push(paint(tail, 0x1e283c));
-    for (let i = 0; i < 5; i++) {
-      const spine = new THREE.ConeGeometry(0.07, 0.6 - i * 0.07, 8);
-      spine.rotateX(-0.5);
-      spine.translate(0, 0.85 - i * 0.08, 0.2 - i * 0.32);
-      parts.push(paint(spine, 0x3b4a66));
+    // Tall dorsal fin: rises behind the head and sweeps back, its edge softly scalloped like
+    // a spiny membrane.
+    const d0 = 0.5;
+    const d1 = -1.05;
+    parts.push(
+      finSurface(
+        26,
+        8,
+        (u, v) => {
+          const zr = d0 + (d1 - d0) * u;
+          const root = topAt(zr) - 0.12;
+          const scallop = 1 - 0.07 * (0.5 - 0.5 * Math.cos(u * TAU * 4));
+          const h = 0.8 * Math.sin(Math.PI * u ** 0.75) ** 1.3 * scallop;
+          const t = 0.08 * (1 - v) ** 0.7 * Math.sin(Math.PI * u) ** 0.45 + 0.003;
+          return [root + v * (h + 0.12), zr - 0.5 * v ** 1.3 * (h / 0.8), t];
+        },
+        (u, v) => (v < 0.2 ? mix(0x1f2a40, FIN, v / 0.2) : mix(FIN, FIN_EDGE, (v - 0.2) / 0.8)),
+      ),
+    );
+    // Small fin under the rear belly.
+    const a0 = -0.45;
+    const a1 = -1.1;
+    parts.push(
+      finSurface(
+        14,
+        6,
+        (u, v) => {
+          const zr = a0 + (a1 - a0) * u;
+          const root = -topAt(zr) + 0.1;
+          const h = 0.42 * Math.sin(Math.PI * u ** 0.8);
+          const t = 0.06 * (1 - v) ** 0.7 * Math.sin(Math.PI * u) ** 0.45 + 0.003;
+          return [root - v * (h + 0.1), zr - 0.3 * v * (h / 0.42), t];
+        },
+        (u, v) => mix(FIN, FIN_EDGE, v),
+        true,
+      ),
+    );
+    // Pectoral fins behind the gills, angled out from the flanks.
+    for (const side of [-1, 1]) {
+      const pec = pectoralGeometry({ fin: FIN, finEdge: FIN_EDGE }, 1);
+      pec.scale(1.55, 1.55, 1.75);
+      pec.rotateZ(side * 0.2);
+      pec.rotateY(-side * 0.12);
+      pec.translate(side * 0.9, -0.36, 0.15);
+      parts.push(pec);
     }
     // Mouth interior (seen when the jaw opens).
     const maw = new THREE.SphereGeometry(0.62, 16, 12);

@@ -198,7 +198,8 @@ export class DarkCavern extends Encounter {
 
 // ===========================================================================
 // 8. Final: the ambush — a big hungry fish rises from behind a rock to block the way home.
-//    Two questions: dodge the ambush, then signal the school, who drive the predator away.
+//    Two questions: dodge the ambush, then signal Pip's family, who swarm the big fish, dazzle it
+//    and chase it off into the dark.
 // ===========================================================================
 export class TheLure extends Encounter {
   get title() {
@@ -232,6 +233,8 @@ export class TheLure extends Encounter {
     this.pred.eyeGlow = 0;
     this.predHold = this.lurkPos.clone();
     this.predMode = 'lurk';
+    this.swarmAt = new THREE.Vector3(); // where Pip's family swarms (around the big fish)
+    this.swarming = false;
     // Distant family lights.
     const items = [];
     for (let i = 0; i < 26; i++) {
@@ -288,6 +291,7 @@ export class TheLure extends Encounter {
   update(dt, t) {
     super.update(dt);
     const pred = this.pred;
+    if (this.swarming) this.swarmAt.copy(this.origin).add(pred.group.position);
     if (pred.group.visible) {
       if (this.predMode === 'lurk') {
         pred.group.position.set(this.predHold.x + Math.sin(t * 0.6) * 0.25, this.predHold.y + Math.sin(t * 0.9) * 0.2, this.predHold.z);
@@ -368,31 +372,68 @@ export class TheLure extends Encounter {
       g.pip.setExpression('determined');
       return;
     }
-    // Stage 2: flash a signal — the school answers and the predator is dazzled.
+    // Stage 2: Pip's escape, told beat by beat in one wide shot that holds Pip, the big fish
+    // blocking the way, and the dark water beyond it where Pip's family is.
+    const school = g.school;
+    g.rig.setShot({ target: this.L(0, 0.8, -14), yaw: 0.35, pitch: 0.16, radius: 6.5, rate: 1.2, rotRate: 0.8 });
+    // 1. Pip flashes its light as bright as it can.
+    g.ui.caption('Pip flashes its light as bright as it can…');
+    g.pip.setExpression('determined');
     g.audio.signal();
     g.pip.pulse(4);
     this.ring(g.pip.position.clone());
-    this.familyGlow = 2.2;
-    await this.sched.wait(0.6);
-    this.familyGlow = 1;
-    const school = g.school;
+    await this.sched.wait(1.4);
+    // 2. Far away, lights flash back: Pip's family has seen the signal.
+    g.ui.caption('…and far away, lights flash back!');
+    g.audio.chime(2);
+    g.pip.setExpression('hopeful');
+    this.ring(this.L(0, 2.4, -40));
+    await this.sched.tween(1.3, (k) => (this.familyGlow = 0.6 + 2 * Math.abs(Math.sin(k * Math.PI * 3))));
+    // 3. The family charges in: the far lights become fish streaming toward the big fish.
+    g.ui.caption('Pip’s family rushes in to help!');
     school.setVisible(true);
     school.spread = 1;
-    school.placeAround(this.L(0, 2, -40), 12);
+    school.placeAround(this.L(0, 2, -42), 8);
+    school.glowU.value = 1.6;
+    school.maxSpeed = 15;
     school.mode = 'swirl';
-    school.anchor = g.pip.group;
-    school.maxSpeed = 13;
-    school.glowU.value = 1.2;
-    g.pip.setExpression('happy');
-    g.rig.setShot({ target: g.pip.group, offset: V(0, 0.4, -1), yaw: 0.7, pitch: 0.28, radius: 6.5, rate: 1.6, rotRate: 0.8 });
-    await this.sched.wait(1.2);
-    this.pred.eyeGlow = 0.3;
-    pred.mouthTarget = 0;
+    this.swarming = true;
+    this.swarmAt.copy(this.origin).add(pred.group.position);
+    school.anchor = this.swarmAt;
     g.audio.whoosh();
-    this.swimPred([[-6, -3, -22], [-14, -6, -34]], 3.2, Ease.inQuad)
-      .then(() => (pred.group.visible = false))
-      .catch(() => {});
-    await this.sched.wait(2.2);
+    this.sched.tween(1.4, (k) => (this.familyGlow = 2.4 * (1 - k))).catch(() => {});
+    await this.sched.wait(1.9);
+    // 4. Surrounded by dozens of glowing fish, the big fish is dazzled: it squints, shuts its
+    //    jaws and shakes its head...
+    g.ui.caption('Dazzled, the big fish turns tail…');
+    g.audio.thud();
+    g.shake(0.3);
+    pred.mouthTarget = 0;
+    const back = pred.group.position.clone().add(V(0.6, 0.2, -1.6));
+    this.swimPred([[back.x, back.y, back.z]], 0.9, Ease.outCubic).catch(() => {});
+    await this.sched.tween(1.0, (k) => {
+      pred.eyeGlow = 1 - 0.85 * k;
+      for (const e of pred.eyeMeshes) e.scale.y = 1 - 0.7 * Math.min(1, k * 3);
+      pred.swimmer.extraRoll = Math.sin(k * 26) * 0.3 * (1 - k);
+    });
+    pred.swimmer.extraRoll = 0;
+    // 5. ...and bolts out of sight, the whole family chasing it off, then they swim back to Pip.
+    //    Its escape stays in open water above the seabed, so it is seen leaving, not vanishing.
+    g.ui.caption('…and flees, chased off by Pip’s family!');
+    g.audio.whoosh();
+    g.pip.setExpression('happy');
+    const above = (x, z, h) => [x, this.floorAt(x, z) + h, z];
+    const flee = this.swimPred([above(6.5, -20, 2.6), above(13, -26, 3.2), above(24, -34, 4)], 3.0, Ease.inQuad);
+    g.rig.setShot({ target: this.L(2.2, 0.6, -17), yaw: 0.35, pitch: 0.16, radius: 7, rate: 0.8, rotRate: 0.6 });
+    await this.sched.wait(1.5);
+    this.swarming = false;
+    school.anchor = g.pip.group;
+    school.maxSpeed = 11;
+    await flee;
+    pred.group.visible = false; // far off in the dark water
+    g.rig.setShot({ target: g.pip.group, offset: V(0, 0.4, -1), yaw: 0.7, pitch: 0.28, radius: 6.5, rate: 1.6, rotRate: 0.8 });
+    await this.sched.wait(1.0);
+    g.ui.hideCaption();
     this.familyGlow = 0;
     school.maxSpeed = 7;
     this.game.ocean.darkTarget = 0;
