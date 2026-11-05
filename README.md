@@ -6,14 +6,16 @@ off by an ocean current. Pip swims on its own;
 you protect it by answering quiz questions whenever danger appears. You have **three lives**, and
 each wrong answer costs one.
 
-**Play it:** https://gayathriswaminathan05-ai.github.io/pip-the-long-swim-home/ (works on phones; best in
+**Play it:** https://pip-the-long-swim-home.companion-proxy.workers.dev (works on phones; best in
 portrait).
 
 See [DESIGN.md](DESIGN.md) for the concept, gameplay outline, visual and motion plan, and mobile
 interface plan.
 
-Every push to `main` runs the tests, builds the game and publishes it to GitHub Pages
-(`.github/workflows/deploy.yml`).
+**Hosting:** Cloudflare (free plan), serving the built game as a static site (`wrangler.jsonc`).
+To publish an update, run `npm run deploy` (tests, build, upload). The first time on a new
+computer, sign in with `npx wrangler login`. A GitHub Pages workflow
+(`.github/workflows/deploy.yml`) is also ready if the project is ever pushed to GitHub.
 
 ## Run it locally
 
