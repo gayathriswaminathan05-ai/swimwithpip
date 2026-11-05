@@ -10,12 +10,13 @@ const _q = new THREE.Quaternion();
 const _Y = new THREE.Vector3(0, 1, 0);
 
 // ---------------------------------------------------------------------------
-// Tentacle: a tapered arm with a pale underside lined with real sucker discs, skinned to a chain of
-// bones. Instead of bending blindly, an arm follows a path (a list of points in its parent's space):
+// Tentacle: a chunky tapered arm in three bold, flat colours (red-orange top, salmon underside,
+// white sucker rings with deep-red centres). The underside is flattened so the big paired suckers
+// stand proud of it. Skinned to a chain of bones. Instead of bending blindly, an arm follows a path (a list of points in its parent's space):
 // over a rock edge, down a face and into a spiral curl. Each bone is aligned to the path, and the
 // suckers face the inside of every bend, so curled tips show their suckers like the reference.
 
-const ARM = { top: 0xee4a22, light: 0xff8a4a, dot: 0xc93a18, under: 0xffd9cf, rim: 0xfffaf6, cup: 0xe9707a };
+const ARM = { top: 0xe8401a, light: 0xf2602e, dot: 0xc4300f, under: 0xff9a7c, rim: 0xf7f5f3, cup: 0xb3200f };
 const _m = new THREE.Matrix4();
 const _x = new THREE.Vector3();
 const _z = new THREE.Vector3();
@@ -27,6 +28,7 @@ export class Tentacle {
     const segH = length / segs;
     this.segH = segH;
     const radiusAt = (k) => r1 + (r0 - r1) * (1 - k) ** 0.8; // stays thick, then thins to the tip
+    const FLAT = 0.7;
 
     // Tube: rings along +Y, closed at the tip. The underside is -X.
     const rings = segs * 3;
@@ -44,14 +46,12 @@ export class Tentacle {
       const rad = radiusAt(k);
       for (let j = 0; j < radial; j++) {
         const th = (j / radial) * TAU;
-        const x = Math.cos(th) * rad;
+        const cx = Math.cos(th);
+        const x = cx * rad * (cx < 0 ? FLAT : 1); // flatter underside for the suckers
         const z = Math.sin(th) * rad;
         pos.push(x, y, z);
-        const inside = -Math.cos(th); // 1 on the underside
-        const mott = fbm3(x * 4 + y * 0.9, y * 1.7, z * 4, 2);
-        c.copy(cTop).lerp(cLight, clamp((mott - 0.42) * 2.4, 0, 1));
-        if (Math.sin(y * 6.1 + th * 3) * Math.sin(y * 2.3 - th * 5) > 0.84) c.lerp(cDot, 0.55);
-        c.lerp(cUnder, smooth(0.05, 0.4, inside));
+        const inside = -cx; // 1 on the underside
+        c.copy(cTop).lerp(cUnder, smooth(0.12, 0.3, inside)); // crisp edge between the two colours
         col.push(c.r, c.g, c.b);
       }
     }
@@ -72,37 +72,47 @@ export class Tentacle {
     tube.setIndex(idx);
     tube.computeVertexNormals();
 
-    // Suckers: little cups on the underside, pink in the middle with a white rim. Two staggered
-    // rows where the arm is thick, one row toward the tip.
+    // Suckers: big raised rings in pairs across the flat underside (one row near the thin tip).
     const cups = [tube];
     const cRim = new THREE.Color(ARM.rim);
     const cCup = new THREE.Color(ARM.cup);
-    let y = length * 0.05;
-    let n = 0;
-    while (y < length * 0.96) {
+    let y = length * 0.04;
+    while (y < length * 0.95) {
       const rad = radiusAt(y / length);
-      const rs = rad * 0.52;
-      const rows = rad > 0.11 ? [n % 2 ? 0.42 : -0.42] : [0];
-      for (const off of rows) {
-        const a = Math.PI + off;
-        const nrm = new THREE.Vector3(Math.cos(a), 0, Math.sin(a));
-        const cup = new THREE.CylinderGeometry(rs, rs * 0.9, rs * 0.7, 14, 1, false);
+      const paired = rad > 0.1;
+      const rs = rad * (paired ? 0.4 : 0.55);
+      for (const side of paired ? [-1, 1] : [0]) {
+        const zOff = side * rad * 0.47;
+        const xs = -rad * FLAT * Math.sqrt(Math.max(0, 1 - (zOff / rad) ** 2)); // on the flat face
+        const nrm = new THREE.Vector3(-1, 0, side * 0.35).normalize();
+        // A sucker: a raised white rim around a slightly sunken deep-red centre.
+        const h = rs * 0.85;
+        const cup = new THREE.LatheGeometry(
+          [
+            // From the outer base up over the rim and down into the centre (faces point outward).
+            new THREE.Vector2(rs * 1.05, 0),
+            new THREE.Vector2(rs, h * 0.85),
+            new THREE.Vector2(rs * 0.8, h),
+            new THREE.Vector2(rs * 0.58, h * 0.9),
+            new THREE.Vector2(rs * 0.5, h * 0.62),
+            new THREE.Vector2(0, h * 0.62),
+          ],
+          12,
+        );
         cup.deleteAttribute('uv');
         const cpos = cup.attributes.position;
         const cc = [];
         for (let i = 0; i < cpos.count; i++) {
           const d = Math.hypot(cpos.getX(i), cpos.getZ(i)) / rs;
-          const isTop = cpos.getY(i) > 0;
-          const cl = isTop && d < 0.6 ? cCup : cRim;
+          const cl = d < 0.54 ? cCup : cRim;
           cc.push(cl.r, cl.g, cl.b);
         }
         cup.setAttribute('color', new THREE.Float32BufferAttribute(cc, 3));
         cup.applyQuaternion(_q.setFromUnitVectors(_Y, nrm));
-        cup.translate(nrm.x * (rad * 0.98), y, nrm.z * (rad * 0.98));
+        cup.translate(xs + nrm.x * rs * 0.1, y, zOff + nrm.z * rs * 0.1);
         cups.push(cup);
       }
-      y += rs * 2.2;
-      n++;
+      y += rs * 2.25;
     }
     const geo = mergeGeometries(cups, false);
     // Skin every vertex to the bone at its height.
@@ -261,8 +271,7 @@ export function armPath(points, length, { curlR = 0.6, curlSide = new THREE.Vect
 }
 
 // ---------------------------------------------------------------------------
-// Octopus (after the reference): bright red-orange with light mottling and small darker dots, a big
-// rounded mantle tilted back, gold eyes with dark horizontal slits in raised sockets, a siphon ring,
+// Octopus: bold and clean, a bright red-orange body, a big rounded mantle tilted back, gold eyes with dark horizontal slits in raised sockets, a siphon ring,
 // and eight arms with pale pink undersides lined with suckers, curling into spirals.
 
 export class Octopus {
@@ -272,10 +281,10 @@ export class Octopus {
     const light = new THREE.Color(ARM.light);
     const dot = new THREE.Color(ARM.dot);
     const pale = new THREE.Color(ARM.under);
+    // Clean, bold colour (no noise): a touch lighter where the light catches the top, salmon below.
     const mottled = (p, n) => {
-      const c = base.clone().lerp(light, clamp((fbm3(p.x * 1.7, p.y * 1.7, p.z * 1.7, 3) - 0.4) * 2.2, 0, 1));
-      if (Math.sin(p.x * 9 + p.y * 4) * Math.sin(p.z * 8 - p.y * 5) > 0.88) c.lerp(dot, 0.5);
-      if (n.y < -0.45) c.lerp(pale, (-n.y - 0.45) * 0.8);
+      const c = base.clone().lerp(light, clamp(n.y, 0, 1) * 0.35);
+      if (n.y < -0.45) c.lerp(pale, (-n.y - 0.45) * 0.9);
       return c;
     };
     // Mantle: the big rounded bulb, tilted back and up behind the eyes.

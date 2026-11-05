@@ -124,19 +124,22 @@ synchronise, and they swim home together to a glowing reef. The completion card 
     thinning to a soft edge
 - **Pip's family:** the same design. They swim as a tidy, staggered school, all facing the same
   way.
-- **Octopus:** modelled on the reference:
-  - bright red-orange with lighter mottling and small darker dots
-  - a big rounded mantle tilted back
+- **Octopus:** bold and clean, in three flat colours and no noise:
+  - a bright red-orange body with a big rounded mantle tilted back
   - gold eyes with horizontal slit pupils, set in ringed sockets, and a siphon ring on the cheek
-  - eight thick arms with pale pink undersides lined with real sucker discs (pink centres, white
-    rims), thinning into spiral-curled tips
+  - eight chunky arms with a flattened salmon underside carrying big raised suckers in pairs:
+    white rims around sunken deep-red centres
+  - arms thin into spiral-curled tips
 
   Each arm follows a path (`armPath` in `actors/creatures.js`) instead of bending blindly, and its
-  suckers face the inside of every bend. The octopus first peeks over its rock, then rises onto it:
-  - most arms drape over the edge, hugging the rock's real surface (found by casting rays at it),
-    and curl away at the tips
-  - one arm is raised and curled beside its head
-  - the arms rear up, strike, tangle or wrap Pip, depending on the answer
+  suckers face the inside of every bend, or turn toward the camera on display arms. It hides fully
+  behind its rock, then climbs over the edge onto the sand in front, with every arm in view:
+  - two arms raised and curling over its head
+  - one reaching for Pip
+  - five spread on the sand with curled tips
+
+  On a right answer the arms rear up and strike; on a wrong one an arm lashes out; on a capture
+  they wrap Pip.
 - **Predator:** a big, dark, speckled deep-sea fish with glowing eyes, a hinged jaw and teeth. No
   lure or antenna.
 - **Jellyfish (scenery only):** pulsing translucent bells with softly waving tentacles.
