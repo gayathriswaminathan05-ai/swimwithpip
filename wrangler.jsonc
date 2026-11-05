@@ -1,9 +1,7 @@
-// Cloudflare hosting: the built game (dist/) is served as a static site.
-// Deploy an update with:  npm run build && npx wrangler deploy
+// Cloudflare Pages hosting: the built game (dist/) is served as a static site at
+// https://pip-the-long-swim-home.pages.dev. Publish an update with:  npm run deploy
 {
   "name": "pip-the-long-swim-home",
   "compatibility_date": "2026-11-04",
-  "assets": {
-    "directory": "./dist"
-  }
+  "pages_build_output_dir": "./dist"
 }
