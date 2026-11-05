@@ -95,6 +95,7 @@ try {
       await waitQuestion(page);
       s = await st(page);
       if (s.state === 'victory') break;
+      if (guard === 0) check((await page.$('#quiz button:not(.answer):not(#btn-next)')) === null, 'questions offer only the four answers (no test Skip button)');
       if (SHOTS && !seen.has(s.encounter + ':' + s.answered)) {
         seen.add(s.encounter + ':' + s.answered);
         await page.screenshot({ path: `${SHOTS}/q${String(s.encounter + 1).padStart(2, '0')}-${s.answered}.png` });
@@ -214,24 +215,6 @@ try {
     await page.tap('#btn-quit');
     s = await st(page);
     check(s.state === 'title', 'Quit to title works');
-    check(errors.length === 0, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
-    await ctx.close();
-  }
-  // ------------------------------------------------------------------ Scenario 3
-  log('\nScenario 3: test-mode Skip button passes a hurdle without answering');
-  {
-    const { ctx, page, errors } = await newGame();
-    await startJourney(page);
-    await waitQuestion(page);
-    let s = await st(page);
-    const enc = s.encounter;
-    check(await page.isVisible('#btn-skip-q'), 'Skip (test) button is visible on the question');
-    await page.tap('#btn-skip-q');
-    await page.tap('#btn-skip-q', { force: true }).catch(() => {});
-    await waitQuestion(page);
-    s = await st(page);
-    check(s.encounter === enc + 1 && s.cleared === enc + 1, 'skipping clears the hurdle and moves on');
-    check(s.lives === 3 && s.answered === 0, 'skipping costs no life and is not counted as an answer');
     check(errors.length === 0, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
     await ctx.close();
   }

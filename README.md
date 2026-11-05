@@ -57,13 +57,6 @@ serve. Preview it with `npm run preview` (port 5181). ES modules need a web serv
 - There is no settings screen: visual quality adjusts itself to the device (add `?quality=low`,
   `medium` or `high` to the URL to force one), and reduced motion follows the device setting.
 
-### Test-mode Skip button
-
-Every question has a small **SKIP (TEST)** button. It passes the hurdle (and plays its escape
-animation) without answering, without costing a life, and without counting as an answer. Turn it
-off before sharing the game with players by setting `SHOW_TEST_SKIP = false` at the top of
-`src/game/Game.js`.
-
 ## Edit the questions
 
 All questions live in [`src/data/questions.js`](src/data/questions.js), a plain array with an
@@ -148,7 +141,6 @@ one landscape check (844 × 390).
 | Rotation to landscape mid-question keeps the question and lives | ✓ |
 | Final reunion and completion screen | ✓ |
 | Quit to title | ✓ |
-| Test-mode Skip: passes the hurdle, costs no life, not counted as an answer | ✓ |
 
 **Performance** (measured in Chrome on an Apple M2 Mac emulating a phone screen at 3× pixel
 density, frame-rate cap off, with ambient sea life and coral models on; these are not real-phone

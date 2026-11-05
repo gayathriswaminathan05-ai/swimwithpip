@@ -323,8 +323,6 @@ button, select { font: inherit; }
   overscroll-behavior: contain;
 }
 .quiz.is-open { transform: translateY(0); }
-.quiz__head { display: flex; align-items: center; justify-content: flex-end; min-height: 20px; margin: -6px -4px -6px 0; }
-.quiz__head:has(> .skip-q[hidden]) { display: none; }
 
 .quiz__q {
   margin: 0 0 2px;
@@ -397,19 +395,6 @@ button, select { font: inherit; }
 }
 .answer.is-wrong .answer__key { background: var(--red); color: #fff; box-shadow: none; }
 .answer.is-dim { opacity: 0.45; }
-
-.skip-q {
-  min-height: 36px;
-  margin: -8px -8px -8px 0;
-  padding: 0 8px;
-  border: 0;
-  background: transparent;
-  color: var(--ink-faint);
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-}
-.skip-q:disabled { opacity: 0.4; }
 
 /* Feedback: one short line (✓/✗ + a few words), the one-sentence explanation, the button. */
 .feedback {

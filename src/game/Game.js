@@ -29,8 +29,6 @@ export const QUALITY = {
   high: { name: 'high', pixelRatio: 2, snow: 750, decor: 1, shafts: true, caustics: true, fogScale: 1, particles: 1, school: 20 },
 };
 const QUALITY_ORDER = ['low', 'medium', 'high'];
-// Test-mode "Skip (test)" button on every question. Set to false before sharing with players.
-const SHOW_TEST_SKIP = true;
 const SETTINGS_KEY = 'pip-way-home-settings';
 // Questions already asked on this device, oldest first, so each new game brings fresh ones.
 const SEEN_KEY = 'pip-way-home-seen-questions';
@@ -308,7 +306,7 @@ export class Game {
 
   _syncSettingsUI() {
     if (!this.ui) return;
-    this.ui.syncSettings({ muted: this.settings.muted, showSkip: SHOW_TEST_SKIP });
+    this.ui.syncSettings({ muted: this.settings.muted });
   }
 
   // =====================================================================
@@ -938,16 +936,7 @@ export class Game {
         ? `Final hurdle${enc.stages > 1 ? ` · part ${stage + 1} of ${enc.stages}` : ''}`
         : `Hurdle ${enc.index + 1} of ${this.encounters.length}`;
       const ans = await this.sched.waitFor(this.ui.ask(q, { title: enc.title, step, icon: enc.icon, hint: enc.hint(stage) }));
-      if (ans.skipped) {
-        // Test-mode skip: pass the hurdle without counting an answer.
-        this.run.skipped = (this.run.skipped || 0) + 1;
-        this.audio.tap();
-        this.ui.hideQuiz();
-        this.ui.toast('Skipped (test mode)', '', 2);
-        enc.phase = 'escape';
-        await enc.success(stage);
-        stage++;
-      } else if (ans.correct) {
+      if (ans.correct) {
         this.run.recordCorrect();
         this.audio.correct();
         this.pip.setExpression('happy', 3);

@@ -67,7 +67,6 @@ export class UI {
       result: $('quiz-result'),
       feedback: $('quiz-feedback'),
       explain: $('quiz-explain'),
-      skipQ: $('btn-skip-q'),
       explainText: $('explain-text'),
       btnNext: $('btn-next'),
       banner: $('banner'),
@@ -101,7 +100,6 @@ export class UI {
     e.answers.forEach((btn) => {
       btn.addEventListener('click', () => this._submit(Number(btn.dataset.i)));
     });
-    e.skipQ.addEventListener('click', () => this._skip());
     e.btnNext.addEventListener('click', () => {
       const r = this._resolveNext;
       this._resolveNext = null;
@@ -192,10 +190,8 @@ export class UI {
     if (r) r.checked = true;
   }
 
-  /** Applies the player's sound choice and the test Skip button. */
-  syncSettings({ muted, showSkip = true }) {
-    this.showSkipQ = showSkip;
-    this.el.skipQ.hidden = !showSkip || !this.gate.isOpen;
+  /** Applies the player's sound choice. */
+  syncSettings({ muted }) {
     this.setMutedIcon(muted);
   }
 
@@ -275,8 +271,6 @@ export class UI {
     e.feedback.hidden = true;
     e.feedback.className = 'feedback';
     e.explain.hidden = true;
-    e.skipQ.hidden = !this.showSkipQ;
-    e.skipQ.disabled = false;
     const longest = Math.max(...q.choices.map((c) => String(c).length));
     e.quiz.classList.toggle('quiz--stack', longest > 20 && window.innerWidth < 430 && window.innerHeight > window.innerWidth);
     e.answers.forEach((btn, i) => {
@@ -305,22 +299,10 @@ export class UI {
     const q = this.current;
     const correct = i === q.correctIndex;
     this.el.answers.forEach((btn) => (btn.disabled = true));
-    this.el.skipQ.disabled = true;
     this.markAnswer(i, q.correctIndex);
     const r = this._resolveAnswer;
     this._resolveAnswer = null;
     if (r) r({ index: i, correct });
-  }
-
-  /** Test-mode skip: passes the hurdle without answering (not counted as an answer). */
-  _skip() {
-    if (!this.quizOpen || this.h.isPaused()) return;
-    if (!this.gate.submit(this.token)) return;
-    this.el.answers.forEach((btn) => (btn.disabled = true));
-    this.el.skipQ.disabled = true;
-    const r = this._resolveAnswer;
-    this._resolveAnswer = null;
-    if (r) r({ index: -1, correct: true, skipped: true });
   }
 
   markAnswer(chosen, correctIndex) {
@@ -342,7 +324,6 @@ export class UI {
 
   showResult(text, good) {
     const e = this.el;
-    e.skipQ.hidden = true;
     e.result.textContent = text;
     e.feedback.className = 'feedback ' + (good ? 'is-good' : 'is-bad');
     e.feedback.hidden = false;

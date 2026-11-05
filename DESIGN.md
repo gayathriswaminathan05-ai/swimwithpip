@@ -40,7 +40,6 @@ The interface ("Sunlit reef") is bright and playful but its own thing, not a Duo
 | Timer | None |
 | Visual quality | Auto (medium on phones, high on desktop; steps down if the frame rate drops) |
 | Reduced motion | Follows the device setting |
-| Test-mode "Skip (test)" button | On (`SHOW_TEST_SKIP` in `src/game/Game.js`) |
 | Settings screen | None. A sound on/off button is always in reach; everything else adapts itself |
 | Corals | All our own, built in code (`world/corals.js` and `world/reef.js`); no third-party models |
 
@@ -260,7 +259,6 @@ is in `src/data/narration.js` and `design/narration-script.md`.
 
   It slides in and out with the question, so the danger and the quiz never share a card.
 - **Question sheet (bottom, minimal):** a frosted white sheet within thumb reach. It holds only:
-  - a small "Skip (test)" link (no topic labels)
   - the question
   - a 2 × 2 grid of white answer cards, each at least 60 px tall
 
